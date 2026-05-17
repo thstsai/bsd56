@@ -20,6 +20,7 @@ function loadAnswerConfig() {
     _answersReleased = snap.exists ? snap.data() : {};
     renderCurriculum();
     renderHome();
+    refreshExercisesTab(); // refresh open modal exercises tab if any
   }, () => {});
 }
 
@@ -207,6 +208,47 @@ function renderCurriculum() {
 // ── Week Detail Modal ─────────────────────────────────────
 let _currentWeekId = null;
 
+// Builds exercises tab HTML for a given week id — called on open AND on Firestore update
+function buildExercisesHtml(id) {
+  const week = BSD56Data.weeks.find(w => w.id === id);
+  if (!week) return '';
+  const answerBlock = isAnswerReleased(id)
+    ? (q) => `
+          <div class="answer-toggle">
+            <button class="btn-show-answer" onclick="toggleAnswer(this)">💡 顯示解答</button>
+            <div class="answer-content">
+              <strong style="color:var(--success)">✅ 解答：</strong>
+              <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.8rem;">${escHtml(q.answer)}</pre>
+            </div>
+          </div>`
+    : () => `<div class="answer-locked">🔒 解答尚未開放 — 老師批改作業後將於每週五線上討論時公布</div>`;
+
+  return week.exercises.map(ex => `
+    <div class="exercise-item">
+      <div class="exercise-header" onclick="toggleExercise(this)">
+        <span>📝 ${ex.title}</span><span class="toggle-icon">▼</span>
+      </div>
+      <div class="exercise-body">
+        ${ex.questions.map((q,qi) => `
+          <div class="exercise-q">
+            <strong>問題 ${qi+1}</strong>
+            <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.82rem;">${escHtml(q.q)}</pre>
+          </div>
+          ${answerBlock(q)}
+          ${qi < ex.questions.length-1 ? '<hr style="margin:.75rem 0;border-color:var(--border);">' : ''}`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// Refreshes only the exercises tab when answer release status changes while modal is open
+function refreshExercisesTab() {
+  if (!_currentWeekId) return;
+  const tabEl = document.getElementById('tab-exercises');
+  if (!tabEl) return;
+  tabEl.innerHTML = buildExercisesHtml(_currentWeekId);
+  applyHighlighting(tabEl);
+}
+
 function openWeekDetail(id) {
   _currentWeekId = id;
   const week = BSD56Data.weeks.find(w => w.id === id);
@@ -223,33 +265,8 @@ function openWeekDetail(id) {
     <h4 style="margin:1rem 0 .75rem;">📚 技術重點</h4>
     <ul class="topics-list">${week.topics.map(t=>`<li>▸ ${t}</li>`).join('')}</ul>`;
 
-  // Exercises tab
-  const answerBlock = isAnswerReleased(id)
-    ? (q) => `
-          <div class="answer-toggle">
-            <button class="btn-show-answer" onclick="toggleAnswer(this)">💡 顯示解答</button>
-            <div class="answer-content">
-              <strong style="color:var(--success)">✅ 解答：</strong>
-              <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.8rem;">${escHtml(q.answer)}</pre>
-            </div>
-          </div>`
-    : () => `<div class="answer-locked">🔒 解答尚未開放 — 老師批改作業後將於每週五線上討論時公布</div>`;
-
-  const exHtml = week.exercises.map((ex,ei) => `
-    <div class="exercise-item">
-      <div class="exercise-header" onclick="toggleExercise(this)">
-        <span>📝 ${ex.title}</span><span class="toggle-icon">▼</span>
-      </div>
-      <div class="exercise-body">
-        ${ex.questions.map((q,qi) => `
-          <div class="exercise-q">
-            <strong>問題 ${qi+1}</strong>
-            <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.82rem;">${escHtml(q.q)}</pre>
-          </div>
-          ${answerBlock(q)}
-          ${qi < ex.questions.length-1 ? '<hr style="margin:.75rem 0;border-color:var(--border);">' : ''}`).join('')}
-      </div>
-    </div>`).join('');
+  // Exercises tab — built via shared function so onSnapshot can refresh it live
+  const exHtml = buildExercisesHtml(id);
 
   // Code examples tab
   const codeHtml = week.codeExamples.map(ex => `
