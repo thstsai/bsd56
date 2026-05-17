@@ -328,7 +328,8 @@ function refreshHomeworkTab() {
     tabEl.insertAdjacentHTML('beforeend', newHtml);
   }
   applyHighlighting(tabEl);
-  renderMermaid(tabEl);
+  // Only run Mermaid if this tab is currently visible
+  if (tabEl.classList.contains('active')) renderMermaid(tabEl);
 }
 
 function openWeekDetail(id) {
@@ -420,7 +421,6 @@ function openWeekDetail(id) {
 
   switchTab(modal.querySelector('.detail-tab[data-tab="tab-objectives"]'));
   applyHighlighting(modal);
-  renderMermaid(modal);
 
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -441,7 +441,10 @@ function switchTab(el) {
   modal.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
   modal.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  modal.querySelector('#' + el.dataset.tab).classList.add('active');
+  const tabEl = modal.querySelector('#' + el.dataset.tab);
+  tabEl.classList.add('active');
+  // Render Mermaid diagrams now that the tab is visible
+  renderMermaid(tabEl);
 }
 
 function toggleExercise(header) {
