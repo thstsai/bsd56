@@ -223,7 +223,13 @@ function buildExercisesHtml(id) {
           </div>`
     : () => `<div class="answer-locked">🔒 解答尚未開放 — 老師批改作業後將於每週五線上討論時公布</div>`;
 
-  return week.exercises.map(ex => `
+  const toolbar = isAnswerReleased(id) ? `
+    <div class="exercises-toolbar">
+      <button class="btn btn-outline btn-sm" onclick="expandAllAnswers()">📖 展開全部解答</button>
+      <button class="btn btn-outline btn-sm" onclick="collapseAllAnswers()">🔼 收合全部</button>
+    </div>` : '';
+
+  return toolbar + week.exercises.map(ex => `
     <div class="exercise-item">
       <div class="exercise-header" onclick="toggleExercise(this)">
         <span>📝 ${ex.title}</span><span class="toggle-icon">▼</span>
@@ -238,6 +244,28 @@ function buildExercisesHtml(id) {
           ${qi < ex.questions.length-1 ? '<hr style="margin:.75rem 0;border-color:var(--border);">' : ''}`).join('')}
       </div>
     </div>`).join('');
+}
+
+function expandAllAnswers() {
+  const tab = document.getElementById('tab-exercises');
+  if (!tab) return;
+  tab.querySelectorAll('.exercise-body').forEach(b => {
+    b.classList.add('open');
+    b.previousElementSibling.querySelector('.toggle-icon').textContent = '▲';
+  });
+  tab.querySelectorAll('.answer-content').forEach(c => c.classList.add('show'));
+  tab.querySelectorAll('.btn-show-answer').forEach(b => b.textContent = '🙈 隱藏解答');
+}
+
+function collapseAllAnswers() {
+  const tab = document.getElementById('tab-exercises');
+  if (!tab) return;
+  tab.querySelectorAll('.exercise-body').forEach(b => {
+    b.classList.remove('open');
+    b.previousElementSibling.querySelector('.toggle-icon').textContent = '▼';
+  });
+  tab.querySelectorAll('.answer-content').forEach(c => c.classList.remove('show'));
+  tab.querySelectorAll('.btn-show-answer').forEach(b => b.textContent = '💡 顯示解答');
 }
 
 // Refreshes only the exercises tab when answer release status changes while modal is open
