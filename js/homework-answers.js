@@ -188,331 +188,605 @@ END;`
     ]
   },
 
-  // ── Week 4：C# WinForms 視窗程式基礎 ─────────────────────
+  // ── Week 4：EF Database-First + CrudToolbar + BaseDetailForm ──
   4: {
-    summary: '建立 LinkOne WinForms 專案架構，完成主表單與登入表單，並套用命名規範。',
+    summary: '使用 EF Core Scaffold 從現有資料庫反向產生 Model，建立 AppDb 靜態類別，以及可繼承的 BaseDetailForm<T> 與 CrudToolbar UserControl。',
     sections: [
       {
         type: 'mermaid',
-        title: 'WinForms 表單架構',
+        title: 'WinForms 表單繼承架構',
         content: `flowchart TD
-  Login["frmLogin\\n登入表單"]
-  Main["frmMain\\n主表單（MDI Parent）"]
-  Employee["frmEmployee\\n員工管理 CRUD"]
-  Post["frmPost\\n貼文管理"]
-  Sticker["frmSticker\\n貼圖管理"]
-  Moderation["frmModeration\\n內容審核"]
+  Login["FrmLogin\\n登入表單"]
+  Main["FrmMain\\n主表單（TabControl）"]
+  Base["BaseDetailForm<T>\\n抽象基底表單"]
+  Employee["FrmEmployee\\n員工管理\\n繼承 BaseDetailForm"]
+  Station["FrmStation\\n充電站管理\\n繼承 BaseDetailForm"]
+  Sticker["FrmSticker\\n貼圖管理\\n繼承 BaseDetailForm"]
+  Toolbar["CrudToolbar\\nUserControl\\n（新增/修改/刪除/儲存/取消）"]
 
   Login -->|登入成功| Main
   Main --> Employee
-  Main --> Post
+  Main --> Station
   Main --> Sticker
-  Main --> Moderation
+  Base -.->|繼承| Employee
+  Base -.->|繼承| Station
+  Base -.->|繼承| Sticker
+  Toolbar -.->|拖曳加入| Employee
+  Toolbar -.->|拖曳加入| Station
 
   style Login fill:#2980b9,color:#fff
   style Main fill:#1a3a6c,color:#fff
+  style Base fill:#8e44ad,color:#fff
+  style Toolbar fill:#e67e22,color:#fff
   style Employee fill:#27ae60,color:#fff
-  style Post fill:#27ae60,color:#fff
-  style Sticker fill:#27ae60,color:#fff
-  style Moderation fill:#e67e22,color:#fff`
+  style Station fill:#27ae60,color:#fff
+  style Sticker fill:#27ae60,color:#fff`
       },
       {
-        type: 'text',
-        title: 'C# 命名規範',
-        content: '控制項命名：btn（Button）、txt（TextBox）、lbl（Label）、dgv（DataGridView）、cmb（ComboBox）、chk（CheckBox）、dtpk（DateTimePicker）。表單命名：frm 前綴（如 frmLogin）。方法命名：動詞開頭（LoadData、SaveRecord、DeleteSelected）。'
+        type: 'code',
+        lang: 'PowerShell',
+        title: 'Scaffold-DbContext 指令（套件管理器主控台）',
+        content: `# 步驟 1：安裝 NuGet 套件
+Install-Package Microsoft.EntityFrameworkCore.SqlServer
+Install-Package Microsoft.EntityFrameworkCore.Tools
+
+# 步驟 2：從現有 DB 反向產生 Model
+Scaffold-DbContext \`
+  "Server=localhost;Database=LinkOne;Integrated Security=True;TrustServerCertificate=True;" \`
+  Microsoft.EntityFrameworkCore.SqlServer \`
+  -OutputDir Models \`
+  -ContextDir Data \`
+  -Context LinkOneContext \`
+  -Force
+
+# 執行後自動產生：
+# Data/LinkOneContext.cs  ← DbContext + OnModelCreating
+# Models/Employee.cs
+# Models/Post.cs
+# Models/Comment.cs
+# Models/Sticker.cs  ... 等`
       },
       {
         type: 'code',
         lang: 'C#',
-        title: 'frmMain MDI 啟動子表單',
-        content: `private void OpenChildForm(Form childForm)
+        title: 'AppDb 靜態類別 + BaseDetailForm<T>',
+        content: `// Data/AppDb.cs
+public static class AppDb
 {
-    childForm.MdiParent = this;
-    childForm.WindowState = FormWindowState.Maximized;
-    childForm.Show();
+    private static LinkOneContext? _ctx;
+    public static LinkOneContext Context =>
+        _ctx ??= new LinkOneContext();
+    public static void Reset() { _ctx?.Dispose(); _ctx = null; }
 }
 
-private void btnEmployee_Click(object sender, EventArgs e)
+// BaseDetailForm.cs（抽象基底）
+public abstract class BaseDetailForm<T> : Form where T : class, new()
 {
-    OpenChildForm(new frmEmployee());
+    protected T?   _current;
+    protected bool _isNew;
+
+    protected abstract void LoadData();
+    protected abstract void FillForm(T entity);
+    protected abstract T   ReadForm();
+    protected abstract bool Validate();
+
+    protected virtual void OnAdd()
+    {
+        _isNew = true; _current = new T();
+        ClearInputs(); crudToolbar1.SetEditMode();
+    }
+    protected virtual void OnSave()
+    {
+        if (!Validate()) return;
+        _current = ReadForm();
+        if (_isNew) AppDb.Context.Set<T>().Add(_current!);
+        AppDb.Context.SaveChanges();
+        MessageBox.Show(_isNew ? "新增成功！" : "修改成功！");
+        LoadData(); crudToolbar1.SetViewMode();
+    }
+    protected virtual void OnDelete()
+    {
+        if (_current == null) return;
+        if (MessageBox.Show("確定刪除？", "確認",
+            MessageBoxButtons.YesNo) != DialogResult.Yes) return;
+        AppDb.Context.Set<T>().Remove(_current);
+        AppDb.Context.SaveChanges();
+        LoadData();
+    }
+    protected virtual void ClearInputs() { }
 }`
       }
     ]
   },
 
-  // ── Week 5：C# 資料庫連接與 CRUD 操作 ────────────────────
+  // ── Week 5：EF LINQ CRUD 完整操作 ───────────────────────
   5: {
-    summary: '實作 Employee 資料的完整 CRUD，包含 DataGridView 顯示、新增、修改、刪除，並加入關聯性檢查。',
+    summary: '使用 EF LINQ 實作 Employee 完整 CRUD，搭配 BaseDetailForm<T> 繼承架構，刪除前用 .Any() 檢查關聯 Post。',
     sections: [
       {
         type: 'code',
         lang: 'C#',
-        title: 'LoadEmployees — 讀取並顯示資料',
-        content: `private void LoadEmployees()
+        title: 'FrmEmployee — 繼承 BaseDetailForm，覆寫4個方法',
+        content: `public partial class FrmEmployee : BaseDetailForm<Employee>
 {
-    using var conn = new SqlConnection(ConnectionString);
-    var adapter = new SqlDataAdapter(
-        "SELECT EmployeeID, Name, Email, IsActive FROM Employee ORDER BY Name",
-        conn);
-    var dt = new DataTable();
-    adapter.Fill(dt);
-    dgvEmployees.DataSource = dt;
-    dgvEmployees.Columns["EmployeeID"].Visible = false;
+    public FrmEmployee() { InitializeComponent(); }
+
+    private void FrmEmployee_Load(object s, EventArgs e) => LoadData();
+
+    // 覆寫 LoadData：LINQ 多條件搜尋
+    protected override void LoadData()
+    {
+        string keyword = txtKeyword.Text.Trim();
+
+        var query = AppDb.Context.Employees.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(keyword))
+            query = query.Where(emp => emp.Name.Contains(keyword) ||
+                                       emp.Email.Contains(keyword));
+
+        dgvEmployees.DataSource = query
+            .OrderBy(emp => emp.Name)
+            .ToList();
+    }
+
+    // 覆寫 FillForm：Entity → TextBox
+    protected override void FillForm(Employee emp)
+    {
+        txtName.Text  = emp.Name;
+        txtEmail.Text = emp.Email;
+        chkActive.Checked = emp.IsActive ?? true;
+    }
+
+    // 覆寫 ReadForm：TextBox → Entity
+    protected override Employee ReadForm()
+    {
+        _current!.Name     = txtName.Text.Trim();
+        _current.Email     = txtEmail.Text.Trim();
+        _current.IsActive  = chkActive.Checked;
+        return _current;
+    }
+
+    // 覆寫 Validate：必填欄位檢查
+    protected override bool Validate()
+    {
+        if (string.IsNullOrWhiteSpace(txtName.Text))
+        { MessageBox.Show("請輸入姓名"); txtName.Focus(); return false; }
+        if (string.IsNullOrWhiteSpace(txtEmail.Text))
+        { MessageBox.Show("請輸入 Email"); txtEmail.Focus(); return false; }
+        return true;
+    }
+
+    // DataGridView 列選取 → 填入表單
+    private void dgvEmployees_SelectionChanged(object s, EventArgs e)
+    {
+        if (dgvEmployees.CurrentRow?.DataBoundItem is Employee emp)
+        {
+            _current = emp; _isNew = false;
+            FillForm(emp);
+            crudToolbar1.SetViewMode();
+        }
+    }
 }`
       },
       {
         type: 'code',
         lang: 'C#',
-        title: 'btnDelete — 刪除前關聯檢查',
-        content: `private void btnDelete_Click(object sender, EventArgs e)
+        title: 'OnDelete 覆寫 — .Any() 關聯檢查後軟刪除',
+        content: `// 覆寫基底的 OnDelete，加入關聯檢查
+protected override void OnDelete()
 {
-    if (dgvEmployees.CurrentRow == null) return;
-    var id = (int)dgvEmployees.CurrentRow.Cells["EmployeeID"].Value;
+    if (_current == null) return;
 
-    using var conn = new SqlConnection(ConnectionString);
-    conn.Open();
+    if (MessageBox.Show("確定刪除此員工？", "確認",
+        MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
 
-    // 檢查是否有關聯 Post
-    var cmd = new SqlCommand(
-        "SELECT COUNT(*) FROM Post WHERE EmployeeID = @ID", conn);
-    cmd.Parameters.AddWithValue("@ID", id);
-    int postCount = (int)cmd.ExecuteScalar();
+    // 用 .Any() 檢查是否有 Post（比 Count() 快）
+    bool hasPosts = AppDb.Context.Posts
+        .Any(p => p.EmployeeID == _current.EmployeeID);
 
-    if (postCount > 0)
+    if (hasPosts)
     {
-        MessageBox.Show($"此員工有 {postCount} 筆貼文，無法刪除。",
-            "刪除失敗", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        return;
+        // 有關聯 → 軟刪除（停用）
+        _current.IsActive = false;
+        AppDb.Context.SaveChanges();
+        MessageBox.Show("該員工有關聯貼文，已改為停用狀態。");
+    }
+    else
+    {
+        // 無關聯 → 實際刪除
+        AppDb.Context.Employees.Remove(_current);
+        AppDb.Context.SaveChanges();
+        MessageBox.Show("刪除成功！");
     }
 
-    if (MessageBox.Show("確定要刪除？", "確認",
-        MessageBoxButtons.YesNo) == DialogResult.Yes)
-    {
-        var del = new SqlCommand(
-            "DELETE FROM Employee WHERE EmployeeID = @ID", conn);
-        del.Parameters.AddWithValue("@ID", id);
-        del.ExecuteNonQuery();
-        LoadEmployees();
-    }
+    LoadData();
+    _current = null;
 }`
       }
     ]
   },
 
-  // ── Week 6：C# 進階功能：認證、計時器 ───────────────────
+  // ── Week 6：EF 認證、計時器與角色控管 ───────────────────
   6: {
-    summary: '實作 SHA-256 密碼雜湊登入驗證，以及自動登出計時器功能。',
+    summary: '以 EF LINQ 實作 SHA-256 密碼登入驗證、AppSession 靜態類別、2分鐘閒置自動登出，以及依角色動態顯示功能。',
     sections: [
       {
         type: 'code',
         lang: 'C#',
-        title: 'SHA-256 密碼雜湊',
-        content: `using System.Security.Cryptography;
-using System.Text;
-
-public static string HashPassword(string password)
+        title: 'AppSession + EF LINQ 登入驗證',
+        content: `// AppSession.cs
+public static class AppSession
 {
-    using var sha = SHA256.Create();
-    byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password));
-    return Convert.ToHexString(bytes).ToLower();
+    public static int    UserID       { get; set; }
+    public static string UserName     { get; set; } = "";
+    public static string Role         { get; set; } = ""; // Admin / Staff
+    public static DateTime LastActivity { get; set; }
+
+    public static void Clear() { UserID = 0; UserName = ""; Role = ""; }
 }
 
-// 登入驗證
+// FrmLogin.cs — EF LINQ 登入（取代 SqlCommand）
+private int _failCount = 0;
+
 private void btnLogin_Click(object sender, EventArgs e)
 {
-    string hash = HashPassword(txtPassword.Text);
-    using var conn = new SqlConnection(ConnectionString);
-    var cmd = new SqlCommand(
-        @"SELECT EmployeeID, Name FROM Employee
-          WHERE Email = @Email AND PasswordHash = @Hash AND IsActive = 1",
-        conn);
-    cmd.Parameters.AddWithValue("@Email", txtEmail.Text.Trim());
-    cmd.Parameters.AddWithValue("@Hash", hash);
-    conn.Open();
-    using var reader = cmd.ExecuteReader();
-    if (reader.Read())
+    if (_failCount >= 3)
+    { MessageBox.Show("帳號已鎖定，請稍後再試"); return; }
+
+    string pwHash = Convert.ToHexString(
+        SHA256.HashData(Encoding.UTF8.GetBytes(txtPassword.Text)));
+
+    var user = AppDb.Context.Employees
+        .FirstOrDefault(u =>
+            u.Email        == txtEmail.Text.Trim() &&
+            u.PasswordHash == pwHash &&
+            u.IsActive     == true);
+
+    if (user != null)
     {
-        Program.CurrentUser = reader["Name"].ToString();
-        new frmMain().Show();
+        AppSession.UserID       = user.EmployeeID;
+        AppSession.UserName     = user.Name;
+        AppSession.Role         = user.Role ?? "Staff";
+        AppSession.LastActivity = DateTime.Now;
+
+        new FrmMain().Show();
         this.Hide();
     }
     else
     {
-        MessageBox.Show("帳號或密碼錯誤", "登入失敗",
-            MessageBoxButtons.OK, MessageBoxIcon.Error);
+        _failCount++;
+        lblError.Text = $"帳號或密碼錯誤（第{_failCount}/3次）";
+        if (_failCount >= 3)
+            MessageBox.Show("連續失敗3次，帳號已鎖定");
     }
 }`
       },
       {
         type: 'code',
         lang: 'C#',
-        title: 'Timer 自動登出（閒置 5 分鐘）',
-        content: `private System.Windows.Forms.Timer _idleTimer;
-private int _idleSeconds = 0;
-private const int MAX_IDLE = 300; // 5 分鐘
+        title: '2分鐘閒置自動登出 + 角色權限控管',
+        content: `// FrmMain.cs
+private System.Windows.Forms.Timer _idleTimer = new();
+private const int IDLE_SECONDS = 120; // 2分鐘
 
-private void InitIdleTimer()
+private void FrmMain_Load(object s, EventArgs e)
 {
-    _idleTimer = new System.Windows.Forms.Timer();
-    _idleTimer.Interval = 1000; // 每秒觸發
-    _idleTimer.Tick += (s, e) => {
-        _idleSeconds++;
-        lblIdle.Text = $"閒置：{_idleSeconds}s / {MAX_IDLE}s";
-        if (_idleSeconds >= MAX_IDLE)
-        {
-            _idleTimer.Stop();
-            MessageBox.Show("已超過閒置時間，自動登出。");
-            Application.Restart();
-        }
-    };
+    // 角色控管：Admin 才能看供應商管理
+    bool isAdmin = AppSession.Role == "Admin";
+    menuItemEmployee.Visible  = isAdmin;
+    btnManageUsers.Enabled    = isAdmin;
+    tabPageReport.Visible     = isAdmin || AppSession.Role == "Staff";
+
+    // 顯示歡迎訊息
+    lblStatus.Text = $"歡迎 {AppSession.UserName} ({AppSession.Role})";
+
+    // 啟動閒置計時器
+    _idleTimer.Interval = 1000;
+    _idleTimer.Tick     += IdleTimer_Tick;
     _idleTimer.Start();
+    Application.AddMessageFilter(new ActivityFilter());
 }
 
-// 任何滑鼠或鍵盤操作重置計時
-protected override void OnMouseMove(MouseEventArgs e)
+private void IdleTimer_Tick(object s, EventArgs e)
 {
-    base.OnMouseMove(e);
-    _idleSeconds = 0;
+    int remaining = IDLE_SECONDS -
+        (int)(DateTime.Now - AppSession.LastActivity).TotalSeconds;
+
+    if (remaining <= 0)
+    { _idleTimer.Stop(); ForceLogout(); }
+    else if (remaining <= 30)
+    { lblStatus.ForeColor = Color.OrangeRed;
+      lblStatus.Text = $"⚠ 閒置將在 {remaining} 秒後自動登出"; }
+    else
+    { lblStatus.ForeColor = Color.Gray;
+      lblStatus.Text = $"歡迎 {AppSession.UserName}"; }
+}
+
+private void ForceLogout()
+{
+    MessageBox.Show("閒置超過2分鐘，已自動登出", "自動登出");
+    AppSession.Clear();
+    new FrmLogin().Show();
+    this.Close();
+}
+
+// IMessageFilter：任何滑鼠/鍵盤動作更新 LastActivity
+class ActivityFilter : IMessageFilter
+{
+    const int WM_MOUSEMOVE = 0x0200, WM_KEYDOWN = 0x0100;
+    public bool PreFilterMessage(ref Message m)
+    {
+        if (m.Msg == WM_MOUSEMOVE || m.Msg == WM_KEYDOWN)
+            AppSession.LastActivity = DateTime.Now;
+        return false;
+    }
 }`
       }
     ]
   },
 
-  // ── Week 7：Android/Kotlin 基礎：UI 設計 ─────────────────
+  // ── Week 7：Android Jetpack Compose UI 設計 ──────────────
   7: {
-    summary: '建立 LinkOne Android App 架構，完成員工清單的 RecyclerView 顯示。',
+    summary: '使用 Jetpack Compose 建立 LinkOne Android App，以 LazyColumn 顯示動態牆清單，NavigationBar 實作底部三頁切換，完全不使用 XML layout。',
     sections: [
       {
         type: 'mermaid',
-        title: 'Android App 架構圖',
+        title: 'Compose App 架構圖',
         content: `flowchart TD
-  MainActivity["MainActivity\\n（主頁 / 底部導覽）"]
-  FeedFrag["FeedFragment\\n動態牆清單"]
-  ProfileFrag["ProfileFragment\\n個人頁"]
-  ShopFrag["StoreFragment\\n貼圖商城"]
-  DetailAct["PostDetailActivity\\n貼文詳情"]
-  CommentAdapter["CommentAdapter\\nRecyclerView"]
+  MainActivity["MainActivity\\nsetContent { LinkOneApp() }"]
+  AppRoot["LinkOneApp()\\nScaffold + NavHost"]
+  NavBar["NavigationBar\\n首頁 / 動態牆 / 商城"]
+  HomeScreen["HomeScreen()\\n@Composable"]
+  FeedScreen["FeedScreen()\\nLazyColumn + PostCard"]
+  StoreScreen["StoreScreen()\\n貼圖商城清單"]
+  PostCard["PostCard()\\n@Composable\\n單一貼文卡片"]
+  DetailScreen["PostDetailScreen()\\n貼文詳情 + 留言"]
 
-  MainActivity --> FeedFrag
-  MainActivity --> ProfileFrag
-  MainActivity --> ShopFrag
-  FeedFrag -->|點擊貼文| DetailAct
-  DetailAct --> CommentAdapter
+  MainActivity --> AppRoot
+  AppRoot --> NavBar
+  AppRoot --> HomeScreen
+  AppRoot --> FeedScreen
+  AppRoot --> StoreScreen
+  FeedScreen --> PostCard
+  PostCard -->|點擊導航| DetailScreen
 
   style MainActivity fill:#1a3a6c,color:#fff
-  style FeedFrag fill:#27ae60,color:#fff
-  style ProfileFrag fill:#27ae60,color:#fff
-  style ShopFrag fill:#27ae60,color:#fff`
+  style NavBar fill:#e67e22,color:#fff
+  style FeedScreen fill:#27ae60,color:#fff
+  style PostCard fill:#27ae60,color:#fff`
       },
       {
         type: 'code',
         lang: 'Kotlin',
-        title: 'PostAdapter — RecyclerView Adapter',
-        content: `data class Post(val id: Int, val content: String, val authorName: String)
+        title: 'PostCard + FeedScreen — Compose 清單',
+        content: `// data class（Compose 直接使用，不需 Adapter）
+data class Post(
+    val id: Int,
+    val content: String,
+    val authorName: String,
+    val createdAt: String
+)
 
-class PostAdapter(
-    private val posts: List<Post>,
-    private val onClick: (Post) -> Unit
-) : RecyclerView.Adapter<PostAdapter.ViewHolder>() {
+// 單一貼文卡片
+@Composable
+fun PostCard(post: Post, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(3.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(post.authorName,
+                 style    = MaterialTheme.typography.labelMedium,
+                 color    = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(4.dp))
+            Text(post.content,
+                 style    = MaterialTheme.typography.bodyMedium,
+                 maxLines = 3)
+            Spacer(Modifier.height(8.dp))
+            Text(post.createdAt,
+                 style = MaterialTheme.typography.labelSmall,
+                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
 
-    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvContent: TextView = view.findViewById(R.id.tvContent)
-        val tvAuthor: TextView  = view.findViewById(R.id.tvAuthor)
+// 動態牆清單頁（LazyColumn 取代 RecyclerView）
+@Composable
+fun FeedScreen(navController: NavController) {
+    val posts = remember {
+        listOf(
+            Post(1, "今天天氣真好，適合出去充電！", "王小明", "2024-01-15"),
+            Post(2, "新的充電站開幕了，推薦大家去試試", "李美華", "2024-01-14"),
+            Post(3, "電動車真的很省油錢", "張大同", "2024-01-13")
+        )
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val v = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_post, parent, false)
-        return ViewHolder(v)
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            Text("動態牆",
+                 style    = MaterialTheme.typography.headlineSmall,
+                 modifier = Modifier.padding(16.dp))
+        }
+        items(posts, key = { it.id }) { post ->
+            PostCard(post, onClick = {
+                navController.navigate("detail/\${post.id}")
+            })
+        }
     }
+}`
+      },
+      {
+        type: 'code',
+        lang: 'Kotlin',
+        title: 'LinkOneApp — NavigationBar + NavHost',
+        content: `@Composable
+fun LinkOneApp() {
+    val navController = rememberNavController()
+    val backStack by navController.currentBackStackEntryAsState()
+    val current   = backStack?.destination?.route
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val post = posts[position]
-        holder.tvContent.text = post.content
-        holder.tvAuthor.text  = post.authorName
-        holder.itemView.setOnClickListener { onClick(post) }
+    val tabs = listOf(
+        Triple("home",  Icons.Default.Home,        "首頁"),
+        Triple("feed",  Icons.Default.DynamicFeed, "動態牆"),
+        Triple("store", Icons.Default.Store,       "商城")
+    )
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                tabs.forEach { (route, icon, label) ->
+                    NavigationBarItem(
+                        selected = current == route,
+                        onClick  = {
+                            navController.navigate(route) {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true; restoreState = true
+                            }
+                        },
+                        icon  = { Icon(icon, label) },
+                        label = { Text(label) }
+                    )
+                }
+            }
+        }
+    ) { padding ->
+        NavHost(navController, "home", Modifier.padding(padding)) {
+            composable("home")           { HomeScreen() }
+            composable("feed")           { FeedScreen(navController) }
+            composable("store")          { StoreScreen() }
+            composable("detail/{postId}") { backStack ->
+                val id = backStack.arguments?.getString("postId")?.toInt() ?: 0
+                PostDetailScreen(id)
+            }
+        }
     }
-
-    override fun getItemCount() = posts.size
 }`
       }
     ]
   },
 
-  // ── Week 8：Android REST API 整合 ────────────────────────
+  // ── Week 8：Android REST API 整合（內建函式庫）────────────
   8: {
-    summary: '整合 Retrofit 呼叫後端 API，使用 ViewModel + LiveData 管理非同步資料流。',
+    summary: '使用 HttpURLConnection + org.json 呼叫後端 API，建立 ApiClient singleton，搭配 Coroutines + Compose produceState 管理非同步資料流，完全不使用 Retrofit/Gson。',
     sections: [
       {
         type: 'mermaid',
-        title: 'Retrofit 架構流程',
+        title: 'HttpURLConnection 架構流程',
         content: `flowchart LR
-  UI["Fragment / Activity\\n（觀察 LiveData）"]
-  VM["ViewModel\\n（呼叫 Repository）"]
-  Repo["Repository\\n（整合 API / DB）"]
-  API["ApiService\\n（Retrofit Interface）"]
-  Server["後端 API Server"]
+  Compose["FeedScreen()\\n@Composable\\n（produceState 觀察）"]
+  ApiClient["ApiClient\\nobject Singleton\\n（封裝 HTTP 呼叫）"]
+  HTTP["HttpURLConnection\\nAndroid 內建"]
+  JSON["org.json\\nJSONArray / JSONObject\\nAndroid 內建"]
+  Server["後端 API Server\\nASP.NET Core"]
 
-  UI -->|observe| VM
-  VM --> Repo
-  Repo --> API
-  API -->|HTTP GET/POST| Server
-  Server -->|JSON Response| API
-  API --> Repo
-  Repo -->|LiveData.postValue| VM
-  VM -->|LiveData| UI
+  Compose -->|"withContext(IO)"| ApiClient
+  ApiClient --> HTTP
+  HTTP -->|"GET /api/posts"| Server
+  Server -->|"JSON Array"| HTTP
+  HTTP --> JSON
+  JSON -->|"List<Post>"| ApiClient
+  ApiClient -->|Result.Success| Compose
 
   style Server fill:#e67e22,color:#fff
-  style UI fill:#1a3a6c,color:#fff`
+  style Compose fill:#1a3a6c,color:#fff
+  style ApiClient fill:#8e44ad,color:#fff`
       },
       {
         type: 'code',
         lang: 'Kotlin',
-        title: 'RetrofitClient + ApiService',
-        content: `// ApiService 介面
-interface ApiService {
-    @GET("api/posts")
-    suspend fun getPosts(): List<Post>
+        title: 'ApiClient — HttpURLConnection + org.json',
+        content: `// ApiClient.kt（零外部套件）
+object ApiClient {
+    private const val BASE_URL = "http://10.0.2.2:5000/api"
+    var token: String = ""
 
-    @POST("api/posts")
-    suspend fun createPost(@Body body: CreatePostRequest): Post
+    private fun httpGet(path: String): String {
+        val conn = (java.net.URL("$BASE_URL$path").openConnection()
+            as java.net.HttpURLConnection).apply {
+            requestMethod = "GET"
+            setRequestProperty("Accept",        "application/json")
+            setRequestProperty("Authorization", token)
+            connectTimeout = 10_000
+            readTimeout    = 10_000
+        }
+        return try {
+            if (conn.responseCode == 200)
+                conn.inputStream.bufferedReader().readText()
+            else throw Exception("HTTP \${conn.responseCode}")
+        } finally { conn.disconnect() }
+    }
 
-    @GET("api/stickers")
-    suspend fun getStickers(): List<Sticker>
-}
+    private fun httpPost(path: String, body: String): String {
+        val conn = (java.net.URL("$BASE_URL$path").openConnection()
+            as java.net.HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput      = true
+            setRequestProperty("Content-Type",  "application/json")
+            setRequestProperty("Authorization", token)
+        }
+        conn.outputStream.bufferedWriter().use { it.write(body) }
+        return try { conn.inputStream.bufferedReader().readText() }
+        finally { conn.disconnect() }
+    }
 
-// RetrofitClient 單例
-object RetrofitClient {
-    private const val BASE_URL = "http://10.0.2.2:5000/"
+    // 取得動態牆貼文清單
+    suspend fun getPosts(): List<Post> = withContext(Dispatchers.IO) {
+        val arr = org.json.JSONArray(httpGet("/posts"))
+        List(arr.length()) { i ->
+            val o = arr.getJSONObject(i)
+            Post(o.getInt("postId"), o.getString("content"),
+                 o.getString("authorName"), o.getString("createdAt"))
+        }
+    }
 
-    val instance: ApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(ApiService::class.java)
+    // 設備授權Token（競賽要求延遲3秒）
+    suspend fun fetchToken(deviceId: String) = withContext(Dispatchers.IO) {
+        delay(3_000)
+        val resp = httpPost("/auth/device-token", """{"deviceId":"$deviceId"}""")
+        token = org.json.JSONObject(resp).getString("token")
     }
 }`
       },
       {
         type: 'code',
         lang: 'Kotlin',
-        title: 'FeedViewModel',
-        content: `class FeedViewModel : ViewModel() {
-    private val _posts = MutableLiveData<List<Post>>()
-    val posts: LiveData<List<Post>> = _posts
+        title: 'FeedScreen — produceState 驅動 Compose UI',
+        content: `// 簡易 Result 封裝
+sealed class UiState<out T> {
+    object Loading : UiState<Nothing>()
+    data class Success<T>(val data: T) : UiState<T>()
+    data class Error(val msg: String) : UiState<Nothing>()
+}
 
-    private val _error = MutableLiveData<String>()
-    val error: LiveData<String> = _error
+@Composable
+fun FeedScreen(navController: NavController) {
+    val state = produceState<UiState<List<Post>>>(UiState.Loading) {
+        value = try {
+            UiState.Success(ApiClient.getPosts())
+        } catch (e: Exception) {
+            UiState.Error(e.message ?: "網路錯誤")
+        }
+    }
 
-    fun loadPosts() {
-        viewModelScope.launch {
-            try {
-                val result = RetrofitClient.instance.getPosts()
-                _posts.postValue(result)
-            } catch (e: Exception) {
-                _error.postValue("載入失敗：\${e.message}")
+    when (val s = state.value) {
+        is UiState.Loading -> Box(Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        is UiState.Success -> LazyColumn {
+            items(s.data, key = { it.id }) { post ->
+                PostCard(post) { navController.navigate("detail/\${post.id}") }
             }
+        }
+        is UiState.Error -> Column(
+            Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("載入失敗：\${s.msg}", color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = { /* TODO: 重試 */ }) { Text("重試") }
         }
     }
 }`

@@ -446,6 +446,46 @@ FROM (
     SELECT TOP 100 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n
     FROM sys.all_objects
 ) t;`
+        },
+        {
+          lang: "SQL", label: "SQL - 建立 View 封裝複雜查詢",
+          code: `-- === SQL View：封裝JOIN與聚合，讓C#/Android直接查詢 ===
+
+-- View 1：充電站可用性摘要（供App清單頁使用）
+CREATE VIEW vw_StationAvailability AS
+SELECT
+    s.StationID,
+    s.StationName,
+    s.Address,
+    s.Latitude,
+    s.Longitude,
+    COUNT(p.PileID)                                   AS TotalPiles,
+    SUM(CASE WHEN p.Status = N'可用' THEN 1 ELSE 0 END) AS AvailablePiles
+FROM ChargingStation s
+LEFT JOIN ChargingPile p ON p.StationID = s.StationID
+WHERE s.IsActive = 1
+GROUP BY s.StationID, s.StationName, s.Address, s.Latitude, s.Longitude;
+
+-- View 2：會員充電費用摘要（供C# 報表頁使用）
+CREATE VIEW vw_MemberChargingSummary AS
+SELECT
+    m.MemberID,
+    m.FullName,
+    m.PlanID,
+    COUNT(r.RecordID)          AS TotalSessions,
+    SUM(r.EnergyKWh)           AS TotalKWh,
+    SUM(r.Amount)              AS TotalAmount,
+    MAX(r.StartTime)           AS LastChargeTime
+FROM Member m
+LEFT JOIN ChargingRecord r ON r.MemberID = m.MemberID
+GROUP BY m.MemberID, m.FullName, m.PlanID;
+
+-- === 使用方式 ===
+-- C# 直接 SELECT，不用寫複雜 JOIN：
+-- SELECT * FROM vw_StationAvailability WHERE AvailablePiles > 0
+
+-- Android HttpURLConnection 呼叫回傳 View 的 API 端點：
+-- GET /api/stations  → 後端 SELECT * FROM vw_StationAvailability`
         }
       ],
       testData: {
@@ -477,56 +517,164 @@ FROM (
 
     {
       id: 4, week: 4, mod: "sw", modName: "C# 軟體",
-      title: "C# WinForms 視窗程式基礎",
-      desc: "建立Visual Studio開發環境，熟悉WinForms控制項與事件驅動程式設計",
-      diff: 2, hours: 5,
+      title: "Entity Framework Database-First + 可繼承表單架構",
+      desc: "使用 EF Core Database-First 從現有資料庫自動產生 Model，搭配可繼承的 BaseDetailForm 與 CrudToolbar UserControl 快速建構管理介面",
+      diff: 3, hours: 5,
       answersReleased: false,
       objectives: [
-        "能建立 .NET 8 WinForms 專案並完成基礎設定",
-        "熟悉常用控制項：TextBox、Button、DataGridView、TabControl、ComboBox",
-        "理解事件驅動程式模型，能撰寫事件處理方法",
-        "能設計符合競賽要求的表單佈局"
+        "能安裝 EF Core NuGet 套件並執行 Scaffold-DbContext 產生 Model",
+        "能建立 AppDb 靜態類別統一管理 DbContext",
+        "理解 BaseDetailForm 繼承模式，子表單只覆寫必要方法",
+        "能設計 CrudToolbar UserControl 供所有管理表單共用"
       ],
       topics: [
-        "Visual Studio 2022 + .NET 8 WinForms 專案建立",
-        "Form 屬性設定：大小、標題、Icon、StartPosition",
-        "常用控制項：Label、TextBox、Button、Panel、GroupBox",
-        "DataGridView：顯示表格資料、設定欄位、選取列",
-        "TabControl：多頁籤介面設計",
-        "MenuStrip / ToolStrip：主選單與工具列",
-        "MessageBox：確認對話框",
-        "事件：Click、TextChanged、SelectionChanged、Load",
-        "appsettings.json 連接字串設定"
+        "NuGet 套件：Microsoft.EntityFrameworkCore.SqlServer、Microsoft.EntityFrameworkCore.Tools",
+        "Scaffold-DbContext 指令：從現有 SQL Server DB 反向產生 DbContext + Entity 類別",
+        "AppDb 靜態類別：統一 DbContext 實體，避免重複建立連線",
+        "DbContext.SaveChanges()：一次提交所有異動",
+        "BaseDetailForm<T>：抽象基底表單，定義 LoadData / OnAdd / OnEdit / OnDelete 抽象方法",
+        "CrudToolbar UserControl：包含「新增/修改/刪除/儲存/取消」按鈕，供所有子表單共用",
+        "DataGridView 綁定 List<T> 或 BindingList<T>",
+        "控制項命名規範：txt / btn / dgv / lbl / cbo 前綴"
       ],
       exercises: [
         {
-          title: "練習一：基礎表單設計",
+          title: "練習一：EF Scaffold 與 AppDb 設定",
           questions: [
             {
-              q: "建立一個「供應商管理」表單，需包含：\n① 頂部搜尋區：TextBox(關鍵字) + Button(搜尋)\n② 中央DataGridView：顯示供應商清單(唯讀)\n③ 右側詳情面板：輸入各欄位的TextBox + 新增/修改/刪除按鈕\n請描述表單的控制項名稱命名規範",
-              answer: "命名規範（匈牙利記法+語意）：\n控制項類型前綴：\n- TextBox → txt（如：txtKeyword、txtSupplierName）\n- Button → btn（如：btnSearch、btnAdd、btnEdit、btnDelete）\n- DataGridView → dgv（如：dgvSuppliers）\n- Label → lbl（如：lblSupplierName）\n- ComboBox → cbo（如：cboStatus）\n- Panel → pnl（如：pnlDetail）\n\n整體佈局建議：\n- 使用TableLayoutPanel或SplitContainer分割左右區域\n- DataGridView的AutoSizeColumnsMode = Fill\n- 按鈕區用FlowLayoutPanel排列"
+              q: "在 Visual Studio 的「套件管理器主控台」中，輸入哪個指令可以從名為 ZChargePlan 的 SQL Server 資料庫反向產生所有 Model 類別？請寫出完整指令並說明各參數的用途",
+              answer: `// 1. 先安裝 NuGet 套件（套件管理器主控台）
+Install-Package Microsoft.EntityFrameworkCore.SqlServer
+Install-Package Microsoft.EntityFrameworkCore.Tools
+
+// 2. 執行 Scaffold 指令
+Scaffold-DbContext \`
+  "Server=localhost;Database=ZChargePlan;Integrated Security=True;TrustServerCertificate=True;" \`
+  Microsoft.EntityFrameworkCore.SqlServer \`
+  -OutputDir Models \`
+  -ContextDir Data \`
+  -Context ZChargeContext \`
+  -Force
+
+// 參數說明：
+// "Server=..."  → 連接字串（指向現有 DB）
+// -OutputDir    → Entity 類別放在 Models 資料夾
+// -ContextDir   → DbContext 放在 Data 資料夾
+// -Context      → 產生的 DbContext 類別名稱
+// -Force        → 若已存在則覆蓋（重新產生時使用）
+
+// 執行後自動產生：
+// Data/ZChargeContext.cs   ← DbContext，包含所有 DbSet<T>
+// Models/Supplier.cs       ← Supplier 資料表對應的 Entity
+// Models/ChargingStation.cs
+// Models/ChargingPile.cs   ... 等`
             },
             {
-              q: "在DataGridView中，如何讓使用者點擊某一列後，將該列資料自動填入右側詳情面板的TextBox中？寫出事件處理方法",
-              answer: `// DataGridView的SelectionChanged事件
-private void dgvSuppliers_SelectionChanged(object sender, EventArgs e)
+              q: "建立一個 AppDb 靜態類別，讓整個應用程式共用同一個 DbContext 實體。說明為何不直接在每個表單 new ZChargeContext()",
+              answer: `// Data/AppDb.cs
+public static class AppDb
 {
-    if (dgvSuppliers.SelectedRows.Count == 0) return;
+    private static ZChargeContext? _ctx;
 
-    DataGridViewRow row = dgvSuppliers.SelectedRows[0];
-    // 取得選取列的資料填入表單
-    txtSupplierName.Text = row.Cells["SupplierName"].Value?.ToString() ?? "";
-    txtContact.Text      = row.Cells["ContactPerson"].Value?.ToString() ?? "";
-    txtPhone.Text        = row.Cells["Phone"].Value?.ToString() ?? "";
-    txtEmail.Text        = row.Cells["Email"].Value?.ToString() ?? "";
+    public static ZChargeContext Context =>
+        _ctx ??= new ZChargeContext();
 
-    // 記錄選取的ID（隱藏欄位）
-    _selectedSupplierID = Convert.ToInt32(row.Cells["SupplierID"].Value);
+    // 需要重新整理時呼叫（例如：其他程式改了DB）
+    public static void Reset()
+    {
+        _ctx?.Dispose();
+        _ctx = null;
+    }
+}
 
-    // 切換按鈕狀態
-    btnAdd.Enabled    = false;
-    btnEdit.Enabled   = true;
-    btnDelete.Enabled = true;
+// 使用方式（任何表單或類別）：
+// var suppliers = AppDb.Context.Suppliers.ToList();
+// AppDb.Context.SaveChanges();
+
+// ❌ 不推薦：每次都 new（競賽時間緊迫、連線資源浪費）
+// using var ctx = new ZChargeContext();
+
+// ✅ 靜態 AppDb 的優點：
+// 1. 不需每個表單傳遞 context
+// 2. EF 的 Change Tracking 跨表單生效
+// 3. 程式碼更簡潔`
+            }
+          ]
+        },
+        {
+          title: "練習二：BaseDetailForm 繼承架構",
+          questions: [
+            {
+              q: "說明 BaseDetailForm<T> 的設計理念。子表單 FrmSupplierManagement 需要覆寫哪些方法？各方法負責什麼工作？",
+              answer: `// BaseDetailForm.cs（抽象基底表單）
+public abstract class BaseDetailForm<T> : Form where T : class, new()
+{
+    protected T? _current;   // 目前選取的 Entity
+    protected bool _isNew;   // 是新增模式？
+
+    // 子表單必須實作的抽象方法
+    protected abstract void LoadData();          // 查詢並綁定 DataGridView
+    protected abstract void FillForm(T entity);  // 將 Entity 填入 TextBox 等控制項
+    protected abstract T ReadForm();             // 從控制項讀取回 Entity
+    protected abstract bool Validate();          // 驗證必填欄位
+
+    // CrudToolbar 事件：子表單可直接繼承使用
+    protected virtual void OnAdd()    { _isNew = true;  _current = new T(); ClearForm(); }
+    protected virtual void OnSave()
+    {
+        if (!Validate()) return;
+        _current = ReadForm();
+        if (_isNew) AppDb.Context.Set<T>().Add(_current!);
+        AppDb.Context.SaveChanges();
+        LoadData();
+    }
+    protected virtual void OnDelete()
+    {
+        if (_current == null) return;
+        if (MessageBox.Show("確定刪除？", "確認", MessageBoxButtons.YesNo) != DialogResult.Yes) return;
+        AppDb.Context.Set<T>().Remove(_current);
+        AppDb.Context.SaveChanges();
+        LoadData();
+    }
+}
+
+// FrmSupplierManagement.cs（子表單，只需覆寫4個方法）
+public partial class FrmSupplierManagement : BaseDetailForm<Supplier>
+{
+    protected override void LoadData()
+    {
+        var list = AppDb.Context.Suppliers
+            .Where(s => s.IsActive == true)
+            .OrderBy(s => s.SupplierName)
+            .ToList();
+        dgvSuppliers.DataSource = list;
+    }
+
+    protected override void FillForm(Supplier s)
+    {
+        txtSupplierName.Text = s.SupplierName;
+        txtContact.Text      = s.ContactPerson ?? "";
+        txtPhone.Text        = s.Phone ?? "";
+    }
+
+    protected override Supplier ReadForm()
+    {
+        _current!.SupplierName   = txtSupplierName.Text.Trim();
+        _current.ContactPerson   = txtContact.Text.Trim();
+        _current.Phone           = txtPhone.Text.Trim();
+        return _current;
+    }
+
+    protected override bool Validate()
+    {
+        if (string.IsNullOrWhiteSpace(txtSupplierName.Text))
+        {
+            MessageBox.Show("請輸入供應商名稱");
+            txtSupplierName.Focus();
+            return false;
+        }
+        return true;
+    }
 }`
             }
           ]
@@ -534,233 +682,245 @@ private void dgvSuppliers_SelectionChanged(object sender, EventArgs e)
       ],
       codeExamples: [
         {
-          lang: "csharp", label: "C# - 表單基礎架構模板",
-          code: `// Form1.cs - 供應商管理主表單
-public partial class FrmSupplierManagement : Form
+          lang: "csharp", label: "C# - CrudToolbar UserControl",
+          code: `// CrudToolbar.cs（UserControl，拖曳到每個管理表單）
+// 設計師：加入 5 個 Button：btnAdd, btnEdit, btnDelete, btnSave, btnCancel
+
+public partial class CrudToolbar : UserControl
 {
-    private int _selectedSupplierID = -1;
-    private readonly string _connStr =
-        ConfigurationManager.ConnectionStrings["ZCharge"].ConnectionString;
+    // 事件：父表單訂閱
+    public event EventHandler? AddClicked;
+    public event EventHandler? EditClicked;
+    public event EventHandler? DeleteClicked;
+    public event EventHandler? SaveClicked;
+    public event EventHandler? CancelClicked;
 
-    public FrmSupplierManagement()
+    public CrudToolbar() { InitializeComponent(); SetViewMode(); }
+
+    // 兩種模式切換
+    public void SetViewMode()   // 瀏覽模式：顯示新增/修改/刪除
     {
-        InitializeComponent();
-        SetupDataGridView();
-    }
-
-    private void FrmSupplierManagement_Load(object sender, EventArgs e)
-    {
-        LoadSuppliers();
-        ClearForm();
-    }
-
-    // 設定DataGridView欄位
-    private void SetupDataGridView()
-    {
-        dgvSuppliers.AutoGenerateColumns = false;
-        dgvSuppliers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        dgvSuppliers.MultiSelect   = false;
-        dgvSuppliers.ReadOnly      = true;
-        dgvSuppliers.AllowUserToAddRows = false;
-
-        // 定義欄位
-        dgvSuppliers.Columns.AddRange(new DataGridViewColumn[]
-        {
-            new DataGridViewTextBoxColumn { Name="SupplierID",   HeaderText="ID",     DataPropertyName="SupplierID",   Visible=false },
-            new DataGridViewTextBoxColumn { Name="SupplierName", HeaderText="供應商名稱", DataPropertyName="SupplierName", Width=200 },
-            new DataGridViewTextBoxColumn { Name="ContactPerson",HeaderText="聯絡人",   DataPropertyName="ContactPerson",Width=100 },
-            new DataGridViewTextBoxColumn { Name="Phone",        HeaderText="電話",     DataPropertyName="Phone",        Width=120 },
-            new DataGridViewTextBoxColumn { Name="Email",        HeaderText="Email",    DataPropertyName="Email",        AutoSizeMode=DataGridViewAutoSizeColumnMode.Fill }
-        });
-    }
-
-    // 清空表單輸入
-    private void ClearForm()
-    {
-        _selectedSupplierID = -1;
-        txtSupplierName.Text = "";
-        txtContact.Text = "";
-        txtPhone.Text = "";
-        txtEmail.Text = "";
         btnAdd.Enabled    = true;
+        btnEdit.Enabled   = true;
+        btnDelete.Enabled = true;
+        btnSave.Enabled   = false;
+        btnCancel.Enabled = false;
+    }
+
+    public void SetEditMode()   // 編輯模式：顯示儲存/取消
+    {
+        btnAdd.Enabled    = false;
         btnEdit.Enabled   = false;
         btnDelete.Enabled = false;
-        dgvSuppliers.ClearSelection();
+        btnSave.Enabled   = true;
+        btnCancel.Enabled = true;
     }
-}`
+
+    private void btnAdd_Click(object s, EventArgs e)    => AddClicked?.Invoke(s, e);
+    private void btnEdit_Click(object s, EventArgs e)   => EditClicked?.Invoke(s, e);
+    private void btnDelete_Click(object s, EventArgs e) => DeleteClicked?.Invoke(s, e);
+    private void btnSave_Click(object s, EventArgs e)   => SaveClicked?.Invoke(s, e);
+    private void btnCancel_Click(object s, EventArgs e) => CancelClicked?.Invoke(s, e);
+}
+
+// 在子表單使用 CrudToolbar：
+// crudToolbar1.AddClicked    += (s,e) => OnAdd();
+// crudToolbar1.SaveClicked   += (s,e) => OnSave();
+// crudToolbar1.DeleteClicked += (s,e) => OnDelete();`
         }
       ],
       testData: {
-        desc: "WinForms 控制項快速參考",
+        desc: "EF Database-First vs ADO.NET 比較",
         table: {
-          headers: ["控制項", "常用屬性", "常用事件", "競賽用途"],
+          headers: ["比較項目", "ADO.NET（舊）", "EF Database-First（新）"],
           rows: [
-            ["TextBox", "Text, MaxLength, PasswordChar", "TextChanged, KeyPress", "輸入欄位、搜尋框"],
-            ["Button", "Text, Enabled, FlatStyle", "Click", "確認、取消、搜尋"],
-            ["DataGridView", "DataSource, ReadOnly, SelectionMode", "SelectionChanged, CellDoubleClick", "資料清單顯示"],
-            ["ComboBox", "Items, SelectedValue, DataSource", "SelectedIndexChanged", "下拉選單"],
-            ["DateTimePicker", "Value, Format, MinDate", "ValueChanged", "日期選擇"],
-            ["TabControl", "TabPages, SelectedIndex", "SelectedIndexChanged", "多功能頁籤"],
-            ["Label", "Text, ForeColor, Font", "-", "欄位說明、狀態顯示"]
+            ["Model 來源", "手動建立類別", "Scaffold 自動產生"],
+            ["查詢寫法", "SQL 字串 + SqlCommand", "LINQ：.Where().ToList()"],
+            ["新增資料", "INSERT SQL + ExecuteNonQuery", "ctx.Add(obj); ctx.SaveChanges()"],
+            ["關聯查詢", "手動 JOIN SQL", ".Include(x => x.Station)"],
+            ["連線管理", "每次 new SqlConnection", "AppDb.Context 統一管理"],
+            ["型別安全", "❌ 欄位名稱字串", "✅ 編譯期檢查"]
           ]
         }
       },
       homework: {
-        title: "Week 4 作業：建立充電站管理表單",
+        title: "Week 4 作業：EF Scaffold + CrudToolbar + 供應商管理",
         requirements: [
-          "建立一個 WinForms 應用程式（.NET 8）",
-          "主表單包含：TabControl with 2個頁籤（充電站管理、充電樁管理）",
-          "充電站頁籤：搜尋TextBox + DataGridView + 右側詳情面板",
-          "所有控制項命名符合規範（txt/btn/dgv/lbl/cbo前綴）",
-          "提交.sln專案資料夾（截圖也可）"
+          "執行 Scaffold-DbContext 從 ZChargePlan 資料庫產生所有 Entity 類別",
+          "建立 AppDb 靜態類別管理 DbContext",
+          "設計 CrudToolbar UserControl（含新增/修改/刪除/儲存/取消按鈕）",
+          "建立 FrmSupplierManagement 繼承 BaseDetailForm<Supplier>，實作 4 個覆寫方法",
+          "提交截圖：Scaffold 產生的 Models 資料夾 + 執行中的表單畫面"
         ]
       }
     },
 
     {
       id: 5, week: 5, mod: "sw", modName: "C# 軟體",
-      title: "C# 資料庫連接與 CRUD 操作",
-      desc: "使用ADO.NET連接SQL Server，實作完整的查詢、新增、修改、刪除功能",
+      title: "Entity Framework LINQ CRUD 完整操作",
+      desc: "使用 EF Core LINQ 實作多條件查詢、新增、修改、刪除，搭配 View 查詢與關聯資料驗證",
       diff: 3, hours: 6,
       answersReleased: false,
       objectives: [
-        "能正確設定連接字串並管理 SqlConnection 生命週期",
-        "能使用 SqlCommand 執行 SELECT/INSERT/UPDATE/DELETE",
-        "能使用 SqlDataAdapter + DataTable 填充 DataGridView",
-        "能實作資料驗證與錯誤處理"
+        "能使用 LINQ .Where() .OrderBy() .ToList() 實作多條件搜尋",
+        "能用 AppDb.Context.Add() / Remove() + SaveChanges() 完成 CRUD",
+        "能用 .Include() 載入關聯資料（避免 N+1 查詢）",
+        "能在刪除前用 .Any() 檢查關聯資料，改為軟刪除（IsActive=false）"
       ],
       topics: [
-        "ADO.NET 核心類別：SqlConnection、SqlCommand、SqlDataAdapter、DataTable",
-        "連接字串設定（appsettings.json / app.config）",
-        "參數化查詢防SQL Injection：@參數名稱",
-        "using 語法確保資源釋放",
-        "DataGridView 資料綁定：DataSource = DataTable",
-        "ExecuteReader()：逐列讀取（適合單筆資料）",
-        "ExecuteNonQuery()：INSERT/UPDATE/DELETE（回傳影響列數）",
-        "ExecuteScalar()：取得單一值（如SELECT COUNT(*)）",
-        "輸入驗證：string.IsNullOrWhiteSpace、正規表達式"
+        "LINQ 查詢：.Where() 多條件、.Contains() 模糊、.OrderBy()、.FirstOrDefault()",
+        "EF 新增：ctx.Entity.Add(obj)、ctx.SaveChanges()",
+        "EF 修改：先 .FirstOrDefault() 取得追蹤物件，再修改屬性，最後 SaveChanges()",
+        "EF 刪除：ctx.Entity.Remove(obj) 或軟刪除 obj.IsActive = false",
+        ".Include()：同時載入關聯資料（如 Station.Include(s => s.Piles)）",
+        ".Any()：快速檢查是否存在關聯資料（比 Count() 快）",
+        "DataGridView 綁定 List<T>：設定 AutoGenerateColumns = false，指定 DataPropertyName",
+        "View 查詢：AppDb.Context.Database.SqlQuery<T>() 或建立 Keyless Entity"
       ],
       exercises: [
         {
-          title: "練習一：查詢功能",
+          title: "練習一：LINQ 查詢與 DataGridView 綁定",
           questions: [
             {
-              q: "實作供應商清單的「多條件搜尋」功能。搜尋條件：供應商名稱（模糊）、狀態（啟用/停用/全部）。點擊搜尋時執行查詢並更新DataGridView",
-              answer: `private void LoadSuppliers(string keyword = "", int status = -1)
+              q: "使用 LINQ 實作供應商清單的多條件搜尋：支援名稱模糊查詢 + 啟用狀態篩選（全部/啟用/停用）。點擊搜尋按鈕時更新 DataGridView",
+              answer: `private void LoadSuppliers()
 {
-    using SqlConnection conn = new(_connStr);
+    string keyword = txtKeyword.Text.Trim();
+    // cboStatus.SelectedIndex: 0=全部, 1=啟用, 2=停用
+    int statusIdx = cboStatus.SelectedIndex;
 
-    // 動態組建WHERE條件
-    string where = "WHERE 1=1";
+    var query = AppDb.Context.Suppliers.AsQueryable();
+
     if (!string.IsNullOrWhiteSpace(keyword))
-        where += " AND SupplierName LIKE @Keyword";
-    if (status >= 0)
-        where += " AND IsActive = @Status";
+        query = query.Where(s => s.SupplierName.Contains(keyword));
 
-    string sql = $"SELECT * FROM Supplier {where} ORDER BY SupplierName";
+    if (statusIdx == 1)  query = query.Where(s => s.IsActive == true);
+    if (statusIdx == 2)  query = query.Where(s => s.IsActive == false);
 
-    using SqlDataAdapter da = new(sql, conn);
-    if (!string.IsNullOrWhiteSpace(keyword))
-        da.SelectCommand.Parameters.AddWithValue("@Keyword", $"%{keyword}%");
-    if (status >= 0)
-        da.SelectCommand.Parameters.AddWithValue("@Status", status);
+    dgvSuppliers.DataSource = query
+        .OrderBy(s => s.SupplierName)
+        .ToList();
+}
 
-    DataTable dt = new();
-    da.Fill(dt);
-    dgvSuppliers.DataSource = dt;
-}`
+// 搜尋按鈕事件
+private void btnSearch_Click(object sender, EventArgs e) => LoadSuppliers();`
             },
             {
-              q: "實作「新增供應商」功能，需包含：必填欄位驗證（名稱不得空白）、Email格式驗證、成功提示、失敗錯誤提示",
-              answer: `private void btnAdd_Click(object sender, EventArgs e)
+              q: "實作「查詢充電站＋其充電樁數量」，需用 .Include() 載入關聯的 ChargingPile 清單，並在 DataGridView 顯示「總樁數」欄位",
+              answer: `// 建立 ViewModel 類別（不是 Entity，只用來顯示）
+class StationView
 {
-    // 驗證
-    if (string.IsNullOrWhiteSpace(txtSupplierName.Text))
-    {
-        MessageBox.Show("請輸入供應商名稱", "必填欄位",
-            MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        txtSupplierName.Focus();
-        return;
-    }
-    if (!string.IsNullOrWhiteSpace(txtEmail.Text) &&
-        !Regex.IsMatch(txtEmail.Text, @"^[^@]+@[^@]+\.[^@]+$"))
-    {
-        MessageBox.Show("Email格式不正確", "格式錯誤",
-            MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        return;
-    }
+    public int    StationID   { get; set; }
+    public string StationName { get; set; } = "";
+    public string Address     { get; set; } = "";
+    public int    TotalPiles  { get; set; }
+    public int    Available   { get; set; }
+}
 
-    try
-    {
-        using SqlConnection conn = new(_connStr);
-        string sql = @"INSERT INTO Supplier
-                       (SupplierName, ContactPerson, Phone, Email, IsActive)
-                       VALUES (@Name, @Contact, @Phone, @Email, 1)";
-        using SqlCommand cmd = new(sql, conn);
-        cmd.Parameters.AddWithValue("@Name",    txtSupplierName.Text.Trim());
-        cmd.Parameters.AddWithValue("@Contact", txtContact.Text.Trim());
-        cmd.Parameters.AddWithValue("@Phone",   txtPhone.Text.Trim());
-        cmd.Parameters.AddWithValue("@Email",   txtEmail.Text.Trim());
-        conn.Open();
-        cmd.ExecuteNonQuery();
+private void LoadStations()
+{
+    // .Include() 一次取出充電站 + 其所有充電樁
+    var stations = AppDb.Context.ChargingStations
+        .Include(s => s.ChargingPiles)
+        .Where(s => s.IsActive == true)
+        .ToList();
 
-        MessageBox.Show("新增成功！", "成功",
-            MessageBoxButtons.OK, MessageBoxIcon.Information);
-        LoadSuppliers();
-        ClearForm();
-    }
-    catch (SqlException ex)
+    // 轉換為 ViewModel（含計算欄位）
+    var viewList = stations.Select(s => new StationView
     {
-        if (ex.Number == 2627) // Unique constraint violation
-            MessageBox.Show("此供應商名稱已存在！", "錯誤",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
-        else
-            MessageBox.Show($"資料庫錯誤：{ex.Message}", "錯誤",
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
-    }
-}`
+        StationID   = s.StationID,
+        StationName = s.StationName,
+        Address     = s.Address ?? "",
+        TotalPiles  = s.ChargingPiles.Count,
+        Available   = s.ChargingPiles.Count(p => p.Status == "可用")
+    }).ToList();
+
+    dgvStations.DataSource = viewList;
+}
+
+// 💡 也可直接查詢 SQL View（更簡單）：
+// 在 ZChargeContext.cs 加入：
+// public DbSet<StationAvailability> StationAvailabilities { get; set; }
+// var list = AppDb.Context.StationAvailabilities.ToList();`
             }
           ]
         },
         {
-          title: "練習二：修改與刪除",
+          title: "練習二：新增、修改、刪除",
           questions: [
             {
-              q: "實作「刪除供應商」功能。刪除前需確認對話框，並檢查是否有相關充電站資料（若有則不允許刪除，改為「停用」）",
-              answer: `private void btnDelete_Click(object sender, EventArgs e)
+              q: "實作「新增供應商」與「修改供應商」。新增時用 Add()，修改時需先 FirstOrDefault() 取得 EF 追蹤的物件再修改屬性",
+              answer: `// 新增
+private void OnAdd()
 {
-    if (_selectedSupplierID < 0) return;
+    if (!Validate()) return;
 
-    var confirm = MessageBox.Show(
-        "確定要刪除此供應商嗎？相關充電站將被停用。",
+    var s = new Supplier
+    {
+        SupplierName   = txtSupplierName.Text.Trim(),
+        ContactPerson  = txtContact.Text.Trim(),
+        Phone          = txtPhone.Text.Trim(),
+        IsActive       = true
+    };
+    AppDb.Context.Suppliers.Add(s);
+    AppDb.Context.SaveChanges();
+
+    MessageBox.Show("新增成功！");
+    LoadSuppliers();
+    ClearForm();
+}
+
+// 修改（_selectedID 在 DataGridView SelectionChanged 時記錄）
+private void OnEdit()
+{
+    if (!Validate()) return;
+
+    // 取得 EF 正在追蹤的物件（不能 new 一個新物件）
+    var s = AppDb.Context.Suppliers
+        .FirstOrDefault(x => x.SupplierID == _selectedID);
+    if (s == null) return;
+
+    // 直接修改屬性，EF 自動標記為 Modified
+    s.SupplierName  = txtSupplierName.Text.Trim();
+    s.ContactPerson = txtContact.Text.Trim();
+    s.Phone         = txtPhone.Text.Trim();
+
+    AppDb.Context.SaveChanges();
+    MessageBox.Show("修改成功！");
+    LoadSuppliers();
+}`
+            },
+            {
+              q: "實作「刪除供應商」。刪除前需確認，若有關聯的啟用充電站則改為停用（軟刪除）而非實際刪除",
+              answer: `private void OnDelete()
+{
+    if (_selectedID <= 0) return;
+
+    var confirm = MessageBox.Show("確定刪除此供應商？",
         "確認刪除", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
     if (confirm != DialogResult.Yes) return;
 
-    using SqlConnection conn = new(_connStr);
-    conn.Open();
+    var supplier = AppDb.Context.Suppliers
+        .Include(s => s.ChargingStations)
+        .FirstOrDefault(s => s.SupplierID == _selectedID);
+    if (supplier == null) return;
 
-    // 檢查是否有充電站
-    using SqlCommand checkCmd = new(
-        "SELECT COUNT(*) FROM ChargingStation WHERE SupplierID=@ID AND IsActive=1", conn);
-    checkCmd.Parameters.AddWithValue("@ID", _selectedSupplierID);
-    int stationCount = (int)checkCmd.ExecuteScalar();
+    // 用 .Any() 檢查是否有啟用的充電站
+    bool hasActiveStations = supplier.ChargingStations
+        .Any(st => st.IsActive == true);
 
-    if (stationCount > 0)
+    if (hasActiveStations)
     {
-        // 有關聯資料 → 改為停用
-        using SqlCommand disableCmd = new(
-            "UPDATE Supplier SET IsActive=0 WHERE SupplierID=@ID", conn);
-        disableCmd.Parameters.AddWithValue("@ID", _selectedSupplierID);
-        disableCmd.ExecuteNonQuery();
-        MessageBox.Show($"該供應商有{stationCount}個充電站，已改為停用狀態。", "提示");
+        // 軟刪除：改為停用
+        supplier.IsActive = false;
+        AppDb.Context.SaveChanges();
+        MessageBox.Show("供應商有關聯充電站，已改為停用狀態。");
     }
     else
     {
         // 無關聯 → 實際刪除
-        using SqlCommand delCmd = new(
-            "DELETE FROM Supplier WHERE SupplierID=@ID", conn);
-        delCmd.Parameters.AddWithValue("@ID", _selectedSupplierID);
-        delCmd.ExecuteNonQuery();
+        AppDb.Context.Suppliers.Remove(supplier);
+        AppDb.Context.SaveChanges();
         MessageBox.Show("刪除成功！");
     }
 
@@ -773,111 +933,113 @@ public partial class FrmSupplierManagement : Form
       ],
       codeExamples: [
         {
-          lang: "csharp", label: "C# - ADO.NET 連接字串設定",
-          code: `// appsettings.json
-{
-  "ConnectionStrings": {
-    "ZCharge": "Server=localhost;Database=ZChargePlan;Integrated Security=True;TrustServerCertificate=True;"
-  }
+          lang: "csharp", label: "C# - EF LINQ 常用語法速查",
+          code: `// === EF LINQ 常用語法速查 ===
+
+// 查詢全部
+var list = AppDb.Context.Suppliers.ToList();
+
+// 條件查詢（多條件）
+var result = AppDb.Context.Suppliers
+    .Where(s => s.IsActive == true && s.SupplierName.Contains("台"))
+    .OrderBy(s => s.SupplierName)
+    .ToList();
+
+// 取單筆（找不到回傳 null）
+var s = AppDb.Context.Suppliers
+    .FirstOrDefault(x => x.SupplierID == id);
+
+// 帶關聯（JOIN 效果）
+var stations = AppDb.Context.ChargingStations
+    .Include(st => st.Supplier)
+    .Include(st => st.ChargingPiles)
+    .ToList();
+
+// 新增
+AppDb.Context.Suppliers.Add(newSupplier);
+AppDb.Context.SaveChanges();
+
+// 修改（先查後改）
+var s = AppDb.Context.Suppliers.FirstOrDefault(x => x.SupplierID == id);
+if (s != null) {
+    s.SupplierName = "新名稱";
+    AppDb.Context.SaveChanges();
 }
 
-// Program.cs - 讀取設定
-using Microsoft.Extensions.Configuration;
+// 刪除
+AppDb.Context.Suppliers.Remove(s!);
+AppDb.Context.SaveChanges();
 
-var config = new ConfigurationBuilder()
-    .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-    .AddJsonFile("appsettings.json")
-    .Build();
+// 檢查是否存在關聯（比 Count 快）
+bool hasChildren = AppDb.Context.ChargingStations
+    .Any(st => st.SupplierID == id && st.IsActive == true);
 
-string connStr = config.GetConnectionString("ZCharge")!;
-
-// 或在Form中直接用 app.config (舊版方式)
-// string connStr = ConfigurationManager.ConnectionStrings["ZCharge"].ConnectionString;
-
-// === 完整CRUD封裝建議 ===
-public class SupplierRepository
-{
-    private readonly string _connStr;
-
-    public SupplierRepository(string connStr) => _connStr = connStr;
-
-    public DataTable GetAll(string keyword = "", int status = -1)
-    {
-        // ... 查詢邏輯
-    }
-
-    public bool Insert(Supplier supplier)
-    {
-        try {
-            using SqlConnection conn = new(_connStr);
-            // ... INSERT邏輯
-            return true;
-        }
-        catch { return false; }
-    }
-
-    // Update、Delete 方法 ...
-}`
+// 查詢 SQL View（需先在 Context 註冊 Keyless Entity）
+var summary = AppDb.Context.MemberChargingSummaries.ToList();`
         }
       ],
       testData: {
-        desc: "ADO.NET 方法選擇指南",
+        desc: "LINQ vs SQL 語法對照",
         table: {
-          headers: ["方法", "回傳值", "使用時機"],
+          headers: ["SQL", "LINQ 等效寫法"],
           rows: [
-            ["ExecuteReader()", "SqlDataReader", "SELECT多列，逐列讀取"],
-            ["ExecuteNonQuery()", "int（影響列數）", "INSERT / UPDATE / DELETE"],
-            ["ExecuteScalar()", "object（第一欄第一列）", "SELECT COUNT(*) 等單值"],
-            ["SqlDataAdapter.Fill()", "void（填DataTable）", "SELECT多列，需GridView顯示"]
+            ["SELECT * FROM T WHERE Name LIKE '%abc%'", ".Where(x => x.Name.Contains(\"abc\"))"],
+            ["SELECT * FROM T WHERE IsActive = 1", ".Where(x => x.IsActive == true)"],
+            ["ORDER BY Name ASC", ".OrderBy(x => x.Name)"],
+            ["SELECT TOP 1 * WHERE ID=1", ".FirstOrDefault(x => x.ID == 1)"],
+            ["SELECT COUNT(*) WHERE ...", ".Count(x => ...)"],
+            ["SELECT EXISTS(...)", ".Any(x => ...)"],
+            ["JOIN T2 ON ...", ".Include(x => x.RelatedEntity)"]
           ]
         }
       },
       homework: {
-        title: "Week 5 作業：完整的供應商CRUD",
+        title: "Week 5 作業：EF LINQ 完整 CRUD",
         requirements: [
-          "實作 ZCharge Plan 供應商管理完整CRUD（查/新增/修改/刪除）",
-          "搜尋支援名稱模糊查詢 + 狀態篩選",
-          "新增/修改需驗證必填欄位",
-          "刪除前需確認對話框，有關聯資料時改停用",
-          "所有SQL使用參數化查詢（@參數名）"
+          "使用 EF LINQ 實作充電站管理完整 CRUD（查詢/新增/修改/刪除）",
+          "查詢支援名稱模糊 + 狀態篩選，使用 .Where().Contains()",
+          "新增/修改用 Add() / 直接修改追蹤物件 + SaveChanges()",
+          "刪除前用 .Any() 檢查關聯充電樁，有則改 IsActive=false",
+          "至少一個查詢使用 .Include() 載入關聯資料並顯示於 DataGridView"
         ]
       }
     },
 
     {
       id: 6, week: 6, mod: "sw", modName: "C# 軟體",
-      title: "C# 進階功能：認證、計時器與特殊整合",
-      desc: "實作登入認證、角色權限、閒置自動登出(2分鐘)及進階業務功能",
+      title: "C# 進階功能：EF 認證、計時器與角色控管",
+      desc: "以 EF Core 實作登入認證、角色權限控制、閒置自動登出（2分鐘）及自動產生強密碼",
       diff: 4, hours: 6,
       answersReleased: false,
       objectives: [
-        "能實作多角色的登入/登出系統",
+        "能使用 EF LINQ 查詢驗證帳號密碼（SHA256 雜湊比對）",
         "能實作閒置2分鐘自動登出（含30秒倒數警告）",
-        "能根據角色動態顯示/隱藏功能選項",
-        "能實作自動產生密碼功能（大小寫+數字+特殊字元）"
+        "能根據角色動態顯示/隱藏 MenuStrip 與 TabPage",
+        "能實作符合規則的自動產生強密碼功能"
       ],
       topics: [
-        "靜態類別儲存Session資訊（LoginUser、Role、LoginTime）",
-        "密碼雜湊：SHA256/BCrypt 保護儲存",
-        "System.Windows.Forms.Timer：每秒倒數計時",
-        "閒置偵測：Application.Idle事件 + 最後操作時間",
-        "角色型存取控制(RBAC)：根據Role決定可見功能",
+        "AppSession 靜態類別：儲存 UserID、UserName、Role、LastActivity",
+        "SHA256 密碼雜湊：Convert.ToHexString(SHA256.HashData(...))",
+        "EF LINQ 登入驗證：.FirstOrDefault(u => u.Email==e && u.PasswordHash==h)",
+        "System.Windows.Forms.Timer：Interval=1000 每秒 Tick",
+        "IMessageFilter：攔截滑鼠/鍵盤訊息，更新 LastActivity",
+        "角色型存取控制(RBAC)：根據 Role 動態 Visible/Enabled",
         "密碼強度驗證：Regex（至少一大寫、一小寫、一數字、一特殊字元、8位以上）",
-        "自動產生符合規則的隨機密碼"
+        "RandomNumberGenerator：加密安全亂數產生強密碼"
       ],
       exercises: [
         {
-          title: "練習一：登入系統",
+          title: "練習一：EF 登入系統",
           questions: [
             {
-              q: "實作登入表單，需求：\n① 使用者輸入Email + 密碼\n② 密碼在DB中以SHA256雜湊儲存\n③ 失敗3次後鎖定帳號15分鐘\n④ 登入成功後儲存Session並開啟主表單",
-              answer: `// Session管理類別
+              q: "使用 EF LINQ 實作登入表單。需求：\n① 使用者輸入Email + 密碼\n② 密碼在DB中以SHA256雜湊儲存\n③ 失敗3次後顯示鎖定提示\n④ 登入成功後儲存Session並開啟主表單",
+              answer: `// AppSession.cs - 靜態類別儲存登入資訊
 public static class AppSession
 {
-    public static int    UserID   { get; set; }
-    public static string UserName { get; set; } = "";
-    public static string Role     { get; set; } = ""; // Admin / Staff / Viewer
-    public static DateTime LoginTime { get; set; }
+    public static int    UserID       { get; set; }
+    public static string UserName     { get; set; } = "";
+    public static string Role         { get; set; } = ""; // Admin / Staff / Viewer
+    public static DateTime LoginTime    { get; set; }
     public static DateTime LastActivity { get; set; }
 
     public static void Clear()
@@ -886,8 +1048,9 @@ public static class AppSession
     }
 }
 
-// 登入邏輯
+// FrmLogin.cs - 登入邏輯（使用 EF LINQ）
 private int _failCount = 0;
+
 private void btnLogin_Click(object sender, EventArgs e)
 {
     if (_failCount >= 3)
@@ -896,24 +1059,23 @@ private void btnLogin_Click(object sender, EventArgs e)
         return;
     }
 
+    // SHA256 雜湊密碼
     string pwHash = Convert.ToHexString(
         SHA256.HashData(Encoding.UTF8.GetBytes(txtPassword.Text)));
 
-    using SqlConnection conn = new(_connStr);
-    using SqlCommand cmd = new(
-        "SELECT UserID, FullName, Role FROM Users WHERE Email=@E AND PasswordHash=@P AND IsActive=1",
-        conn);
-    cmd.Parameters.AddWithValue("@E", txtEmail.Text.Trim());
-    cmd.Parameters.AddWithValue("@P", pwHash);
-    conn.Open();
-    using SqlDataReader dr = cmd.ExecuteReader();
+    // EF LINQ 查詢（取代 SqlCommand）
+    var user = AppDb.Context.Users
+        .FirstOrDefault(u =>
+            u.Email == txtEmail.Text.Trim() &&
+            u.PasswordHash == pwHash &&
+            u.IsActive == true);
 
-    if (dr.Read())
+    if (user != null)
     {
-        AppSession.UserID    = dr.GetInt32(0);
-        AppSession.UserName  = dr.GetString(1);
-        AppSession.Role      = dr.GetString(2);
-        AppSession.LoginTime = DateTime.Now;
+        AppSession.UserID       = user.UserID;
+        AppSession.UserName     = user.FullName;
+        AppSession.Role         = user.Role;
+        AppSession.LoginTime    = DateTime.Now;
         AppSession.LastActivity = DateTime.Now;
 
         new FrmMain().Show();
@@ -923,29 +1085,33 @@ private void btnLogin_Click(object sender, EventArgs e)
     {
         _failCount++;
         lblError.Text = $"帳號或密碼錯誤（第{_failCount}/3次）";
-        if (_failCount >= 3) MessageBox.Show("連續失敗3次，帳號已鎖定");
+        if (_failCount >= 3)
+            MessageBox.Show("連續失敗3次，帳號已鎖定");
     }
 }`
             },
             {
               q: "實作2分鐘閒置自動登出。需求：剩30秒時在狀態列顯示橘色警告文字，時間到後強制登出並回到登入畫面",
-              answer: `// 在主表單 FrmMain.cs 中
+              answer: `// FrmMain.cs - 閒置自動登出
 private System.Windows.Forms.Timer _idleTimer = new();
 private const int IDLE_SECONDS = 120;  // 2分鐘
 
 private void FrmMain_Load(object sender, EventArgs e)
 {
-    _idleTimer.Interval = 1000;  // 每秒檢查
+    // 根據角色設定可見功能
+    SetupByRole();
+
+    _idleTimer.Interval = 1000;  // 每秒 Tick
     _idleTimer.Tick += IdleTimer_Tick;
     _idleTimer.Start();
 
-    // 所有滑鼠/鍵盤操作更新最後活動時間
+    // IMessageFilter 攔截所有滑鼠/鍵盤，更新 LastActivity
     Application.AddMessageFilter(new ActivityFilter());
 }
 
 private void IdleTimer_Tick(object sender, EventArgs e)
 {
-    int elapsed = (int)(DateTime.Now - AppSession.LastActivity).TotalSeconds;
+    int elapsed   = (int)(DateTime.Now - AppSession.LastActivity).TotalSeconds;
     int remaining = IDLE_SECONDS - elapsed;
 
     if (remaining <= 0)
@@ -955,14 +1121,13 @@ private void IdleTimer_Tick(object sender, EventArgs e)
     }
     else if (remaining <= 30)
     {
-        // 橘色警告
         lblStatus.ForeColor = Color.OrangeRed;
         lblStatus.Text = $"⚠ 閒置將在 {remaining} 秒後自動登出";
     }
     else
     {
         lblStatus.ForeColor = Color.Gray;
-        lblStatus.Text = $"歡迎 {AppSession.UserName}";
+        lblStatus.Text = $"歡迎 {AppSession.UserName} ({AppSession.Role})";
     }
 }
 
@@ -974,7 +1139,16 @@ private void ForceLogout()
     this.Close();
 }
 
-// 活動過濾器：更新最後活動時間
+// 角色設定（根據 Role 隱藏功能）
+private void SetupByRole()
+{
+    bool isAdmin = AppSession.Role == "Admin";
+    menuSupplier.Visible    = isAdmin;  // 供應商管理僅Admin可見
+    btnDeleteUser.Enabled   = isAdmin;
+    tabPageReport.Visible   = isAdmin || AppSession.Role == "Staff";
+}
+
+// IMessageFilter：更新最後活動時間
 class ActivityFilter : IMessageFilter
 {
     const int WM_MOUSEMOVE = 0x0200, WM_KEYDOWN = 0x0100;
@@ -1001,31 +1175,35 @@ private string GeneratePassword(int length = 10)
     const string digits  = "23456789";
     const string special = "!@#$%&*";
 
-    var rng = RandomNumberGenerator.Create();
-    var bytes = new byte[32];
-    rng.GetBytes(bytes);
+    var bytes = new byte[length + 4];
+    RandomNumberGenerator.Fill(bytes);
 
-    var pwd = new char[length];
+    var pwd      = new char[length];
     var allChars = upper + lower + digits + special;
 
-    // 確保每類至少一個
-    pwd[0] = upper[bytes[0]   % upper.Length];
-    pwd[1] = lower[bytes[1]   % lower.Length];
-    pwd[2] = digits[bytes[2]  % digits.Length];
+    // 確保每類至少出現一個
+    pwd[0] = upper  [bytes[0] % upper.Length];
+    pwd[1] = lower  [bytes[1] % lower.Length];
+    pwd[2] = digits [bytes[2] % digits.Length];
     pwd[3] = special[bytes[3] % special.Length];
 
     for (int i = 4; i < length; i++)
         pwd[i] = allChars[bytes[i] % allChars.Length];
 
-    // 隨機打亂順序
+    // 隨機打亂順序（避免前4碼固定）
     return new string(pwd.OrderBy(_ => RandomNumberGenerator.GetInt32(100)).ToArray());
 }
 
 // 驗證密碼強度
-private bool IsPasswordStrong(string password)
-{
-    return Regex.IsMatch(password,
+private bool IsPasswordStrong(string password) =>
+    Regex.IsMatch(password,
         @"^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%&*]).{8,}$");
+
+// 使用（btnGeneratePwd_Click）
+private void btnGeneratePwd_Click(object sender, EventArgs e)
+{
+    txtPassword.Text = GeneratePassword();
+    lblStrength.Text = IsPasswordStrong(txtPassword.Text) ? "✅ 強" : "⚠ 弱";
 }`
         }
       ],
@@ -1043,113 +1221,154 @@ private bool IsPasswordStrong(string password)
         }
       },
       homework: {
-        title: "Week 6 作業：登入系統 + 自動登出",
+        title: "Week 6 作業：EF 登入系統 + 自動登出",
         requirements: [
-          "實作登入表單（Email + 密碼，SHA256雜湊驗證）",
-          "失敗3次鎖定提示",
+          "使用 EF LINQ 實作登入（.FirstOrDefault() 驗證 Email + SHA256 密碼）",
+          "AppSession 靜態類別儲存登入資訊",
+          "失敗3次顯示鎖定提示",
           "實作2分鐘閒置自動登出（30秒前橘色警告）",
-          "依角色(Admin/Staff)動態顯示/隱藏至少2個功能",
-          "提供測試帳號資料（帳號/密碼/角色各一組）"
+          "依角色(Admin/Staff)動態顯示/隱藏至少2個功能"
         ]
       }
     },
 
     {
       id: 7, week: 7, mod: "app", modName: "Android",
-      title: "Android/Kotlin 基礎：UI 設計與導航",
-      desc: "建立Android開發環境，熟悉Activity、Fragment、RecyclerView與底部導航",
+      title: "Android/Kotlin Jetpack Compose UI 設計與導航",
+      desc: "使用 Jetpack Compose 宣告式 UI 取代 XML 佈局，搭配 NavigationBar 實作底部導航，LazyColumn 顯示清單",
       diff: 3, hours: 5,
       answersReleased: false,
       objectives: [
-        "能建立 Android Studio Ladybug + Kotlin 專案",
-        "能設計 ConstraintLayout 響應式佈局",
-        "能實作 RecyclerView + ViewHolder 顯示清單",
-        "能使用 BottomNavigationView 實作多頁切換"
+        "能建立 Android Studio + Kotlin + Compose 專案",
+        "能以 @Composable 函式組合 UI，取代 XML layout",
+        "能用 LazyColumn 顯示清單，取代 RecyclerView",
+        "能用 NavigationBar + NavHost 實作底部多頁切換"
       ],
       topics: [
         "Android Studio Ladybug + JDK 17 + Kotlin 2.1.10 環境設定",
-        "Activity 生命週期：onCreate → onStart → onResume → onPause → onStop → onDestroy",
-        "ConstraintLayout：constraint_top, constraint_start/end, bias",
-        "RecyclerView + ListAdapter + DiffUtil（現代實作方式）",
-        "ViewBinding：取代 findViewById，型別安全存取 View",
-        "BottomNavigationView + NavGraph 導航元件",
-        "Fragment + FragmentManager 管理頁面",
-        "Material Design 3 元件：MaterialCardView、ExtendedFAB"
+        "Jetpack Compose：@Composable 函式、Preview、setContent",
+        "基本 Compose 元件：Text、Button、Column、Row、Card、Spacer",
+        "狀態管理：remember { mutableStateOf() }、StateFlow",
+        "LazyColumn：顯示清單（取代 RecyclerView），items()、item()",
+        "NavigationBar + NavigationBarItem：底部導航列",
+        "NavHost + NavController + composable()：頁面路由",
+        "Modifier：padding、fillMaxWidth、height、clickable、background"
       ],
       exercises: [
         {
-          title: "練習一：充電站清單頁面",
+          title: "練習一：Compose 充電站清單",
           questions: [
             {
-              q: "實作一個 ChargingStationListFragment，使用 RecyclerView 顯示充電站清單。每個項目卡片需顯示：站名、地址、可用樁數/總樁數。點擊卡片後導航至詳情頁",
-              answer: `// item_station.xml 佈局（關鍵部分）
-// MaterialCardView > ConstraintLayout
-//   TextView: tv_station_name (大字, 粗體)
-//   TextView: tv_address (小字, 灰色)
-//   TextView: tv_availability (右側, 綠/紅色)
+              q: "使用 Jetpack Compose 實作充電站清單頁面。每個卡片需顯示：站名、地址、可用樁數/總樁數（可用時綠色，無樁紅色）。點擊卡片後觸發 onClick callback",
+              answer: `// data class（不需要 adapter，直接傳進 Composable）
+data class ChargingStation(
+    val id: Int,
+    val name: String,
+    val address: String,
+    val available: Int,
+    val total: Int
+)
 
-// StationAdapter.kt
-class StationAdapter(
-    private val onClick: (ChargingStation) -> Unit
-) : ListAdapter<ChargingStation, StationAdapter.ViewHolder>(DIFF_CB) {
-
-    inner class ViewHolder(val binding: ItemStationBinding) :
-        RecyclerView.ViewHolder(binding.root) {
-
-        fun bind(station: ChargingStation) {
-            binding.tvStationName.text  = station.name
-            binding.tvAddress.text      = station.address
-            binding.tvAvailability.text = "\${station.available}/\${station.total} 可用"
-            binding.tvAvailability.setTextColor(
-                if (station.available > 0) Color.parseColor("#27AE60")
-                else Color.parseColor("#E74C3C")
+// 單一卡片 Composable
+@Composable
+fun StationCard(station: ChargingStation, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(station.name,  style = MaterialTheme.typography.titleMedium)
+                Text(station.address, style = MaterialTheme.typography.bodySmall,
+                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(
+                text  = "\${station.available}/\${station.total}",
+                color = if (station.available > 0) Color(0xFF27AE60) else Color(0xFFE74C3C),
+                style = MaterialTheme.typography.titleMedium
             )
-            binding.root.setOnClickListener { onClick(station) }
         }
     }
+}
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-        ViewHolder(ItemStationBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false))
-
-    override fun onBindViewHolder(holder: ViewHolder, pos: Int) =
-        holder.bind(getItem(pos))
-
-    companion object {
-        val DIFF_CB = object : DiffUtil.ItemCallback<ChargingStation>() {
-            override fun areItemsTheSame(a: ChargingStation, b: ChargingStation) = a.id == b.id
-            override fun areContentsTheSame(a: ChargingStation, b: ChargingStation) = a == b
+// 清單頁 Composable（LazyColumn 取代 RecyclerView）
+@Composable
+fun StationListScreen(
+    stations: List<ChargingStation>,
+    onStationClick: (ChargingStation) -> Unit
+) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(stations) { station ->
+            StationCard(station, onClick = { onStationClick(station) })
         }
     }
 }`
             },
             {
-              q: "實作 BottomNavigationView，三個頁籤：首頁(Home)、尋找充電站(Find)、我的帳戶(Account)。使用Navigation Component管理Fragment切換",
-              answer: `// nav_graph.xml
-// <navigation>
-//   <fragment id="@+id/homeFragment" .../>
-//   <fragment id="@+id/findFragment" .../>
-//   <fragment id="@+id/accountFragment" .../>
-
-// activity_main.xml 關鍵部分
-// <FragmentContainerView app:navGraph="@navigation/nav_graph"/>
-// <com.google.android.material.bottomnavigation.BottomNavigationView
-//     app:menu="@menu/bottom_nav_menu"/>
+              q: "實作 NavigationBar 底部導航，三個頁籤：首頁、充電站、我的帳戶。使用 NavHost 管理頁面切換，選取的頁籤要高亮顯示",
+              answer: `// 路由常數
+object Routes {
+    const val HOME    = "home"
+    const val STATION = "station"
+    const val ACCOUNT = "account"
+}
 
 // MainActivity.kt
-class MainActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityMainBinding
-
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContent {
+            ZChargeTheme {
+                ZChargeApp()
+            }
+        }
+    }
+}
 
-        val navController = (supportFragmentManager
-            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment)
-            .navController
+@Composable
+fun ZChargeApp() {
+    val navController = rememberNavController()
+    val navBackStack  by navController.currentBackStackEntryAsState()
+    val currentRoute  = navBackStack?.destination?.route
 
-        binding.bottomNav.setupWithNavController(navController)
+    val items = listOf(
+        Triple(Routes.HOME,    Icons.Default.Home,        "首頁"),
+        Triple(Routes.STATION, Icons.Default.EvStation,   "充電站"),
+        Triple(Routes.ACCOUNT, Icons.Default.AccountCircle,"我的")
+    )
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                items.forEach { (route, icon, label) ->
+                    NavigationBarItem(
+                        selected = currentRoute == route,
+                        onClick  = {
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState    = true
+                            }
+                        },
+                        icon  = { Icon(icon, contentDescription = label) },
+                        label = { Text(label) }
+                    )
+                }
+            }
+        }
+    ) { padding ->
+        NavHost(navController, startDestination = Routes.HOME,
+                modifier = Modifier.padding(padding)) {
+            composable(Routes.HOME)    { HomeScreen() }
+            composable(Routes.STATION) { StationListScreen(mockStations) {} }
+            composable(Routes.ACCOUNT) { AccountScreen() }
+        }
     }
 }`
             }
@@ -1158,13 +1377,37 @@ class MainActivity : AppCompatActivity() {
       ],
       codeExamples: [
         {
-          lang: "kotlin", label: "Kotlin - RecyclerView 完整實作",
-          code: `// build.gradle.kts (app) 依賴
+          lang: "kotlin", label: "Kotlin - Compose 專案 build.gradle.kts",
+          code: `// build.gradle.kts (app) - Compose 所需設定
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
+
+android {
+    compileSdk = 35
+    defaultConfig {
+        minSdk = 28
+        targetSdk = 35
+    }
+    buildFeatures { compose = true }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
+    }
+}
+
 dependencies {
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.8.0")
-    implementation("androidx.navigation:navigation-ui-ktx:2.8.0")
+    val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.navigation:navigation-compose:2.8.3")
+
+    // ViewModel + StateFlow
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 }
 
 // ChargingStation data class
@@ -1176,178 +1419,189 @@ data class ChargingStation(
     val total: Int
 )
 
-// Fragment 中使用
-class FindStationFragment : Fragment(R.layout.fragment_find_station) {
-    private var _binding: FragmentFindStationBinding? = null
-    private val binding get() = _binding!!
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        _binding = FragmentFindStationBinding.bind(view)
-
-        val adapter = StationAdapter { station ->
-            // 導航至詳情頁
-            val action = FindStationFragmentDirections
-                .actionFindToDetail(station.id)
-            findNavController().navigate(action)
-        }
-
-        binding.recyclerView.adapter = adapter
-        binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
-
-        // 暫時使用假資料
-        val mockData = listOf(
-            ChargingStation(1, "台北車站充電站", "台北市中正區忠孝西路", 5, 8),
-            ChargingStation(2, "信義威秀停車場", "台北市信義區松壽路", 0, 4)
-        )
-        adapter.submitList(mockData)
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
-}`
+// 假資料（後續 Week 8 換成 API 資料）
+val mockStations = listOf(
+    ChargingStation(1, "台北車站充電站", "台北市中正區忠孝西路", 5, 8),
+    ChargingStation(2, "信義威秀停車場", "台北市信義區松壽路",   0, 4),
+    ChargingStation(3, "內湖科技園區站", "台北市內湖區基湖路",   3, 6)
+)`
         }
       ],
       testData: {
-        desc: "Android 開發環境規格",
+        desc: "Compose vs XML / RecyclerView 對照",
         table: {
-          headers: ["工具", "版本", "說明"],
+          headers: ["XML + View 傳統方式", "Jetpack Compose 新方式"],
           rows: [
-            ["Android Studio", "Ladybug (2024.2)", "競賽指定IDE"],
-            ["Kotlin", "2.1.10", "主要開發語言"],
-            ["JDK", "17 (Temurin)", "Java開發套件"],
-            ["minSdk", "API 28 (Android 9)", "最低支援版本"],
-            ["targetSdk", "API 35 (Android 15)", "目標版本"],
-            ["Material", "3.0 (Material3)", "UI元件庫"],
-            ["Navigation", "2.8.0", "Fragment導航元件"]
+            ["activity_main.xml + setContentView", "setContent { ZChargeApp() }"],
+            ["TextView.text = \"abc\"", "Text(\"abc\")"],
+            ["RecyclerView + Adapter + ViewHolder", "LazyColumn { items(list) { Card(...) } }"],
+            ["BottomNavigationView + NavGraph XML", "NavigationBar + NavHost + composable()"],
+            ["ConstraintLayout XML", "Column / Row / Box + Modifier"],
+            ["findViewById / ViewBinding", "直接在 @Composable 函式內使用狀態"],
+            ["DiffUtil 計算差異", "State 變化自動 Recompose"]
           ]
         }
       },
       homework: {
-        title: "Week 7 作業：ZCharge App 基礎頁面",
+        title: "Week 7 作業：ZCharge App Compose UI",
         requirements: [
-          "建立 Android 專案（Kotlin + ViewBinding）",
-          "實作 BottomNavigation（3個頁籤：首頁/充電站/我的）",
-          "充電站頁籤使用RecyclerView顯示假資料清單（至少5筆）",
-          "點擊清單項目可進入詳情頁（顯示站名/地址）",
-          "提交APK截圖或錄影"
+          "建立 Android 專案（Kotlin + Jetpack Compose）",
+          "實作 NavigationBar 底部導航（3個頁籤：首頁/充電站/我的）",
+          "充電站頁籤使用 LazyColumn + Card 顯示假資料清單（至少5筆）",
+          "卡片顯示站名、地址、可用樁數（顏色區分）",
+          "提交 App 截圖或錄影（可看到底部導航與清單）"
         ]
       }
     },
 
     {
       id: 8, week: 8, mod: "app", modName: "Android",
-      title: "Android REST API 整合",
-      desc: "使用Retrofit呼叫後端Web API，搭配Kotlin Coroutines處理非同步請求",
+      title: "Android REST API 整合（內建函式庫）",
+      desc: "使用 Android 內建的 HttpURLConnection + org.json 呼叫後端 Web API，搭配 Coroutines 處理非同步，不依賴外部套件",
       diff: 4, hours: 6,
       answersReleased: false,
       objectives: [
-        "能使用 Retrofit2 定義 API 介面並發送 GET/POST 請求",
-        "能使用 Kotlin Coroutines 在背景執行網路請求",
-        "能使用 Gson 解析 JSON 回應並對應 data class",
-        "能處理網路錯誤並顯示適當訊息"
+        "能使用 HttpURLConnection 發送 GET / POST 請求",
+        "能使用 org.json.JSONArray / JSONObject 解析 JSON 回應",
+        "能建立 ApiClient singleton 統一管理 HTTP 請求",
+        "能在 Coroutines withContext(Dispatchers.IO) 執行網路操作"
       ],
       topics: [
-        "Retrofit2 + OkHttp + Gson 依賴設定",
-        "API 介面定義：@GET、@POST、@PUT、@DELETE、@Path、@Body、@Header",
-        "Singleton 模式建立 RetrofitClient",
-        "Kotlin Coroutines：suspend 函式、CoroutineScope、lifecycleScope",
-        "ViewModel + LiveData/StateFlow 資料流",
-        "Result<T> 封裝成功/失敗回應",
-        "AndroidManifest.xml 加入 INTERNET 權限",
-        "設備授權Token：延遲3秒取得Token的競賽特殊需求"
+        "HttpURLConnection：Android 內建 HTTP 用戶端，不需額外套件",
+        "org.json.JSONObject / JSONArray：Android 內建 JSON 解析",
+        "ApiClient object：Singleton 封裝所有 API 呼叫",
+        "Kotlin Coroutines：withContext(Dispatchers.IO) 在背景執行網路請求",
+        "LaunchedEffect / produceState：Compose 中啟動 Coroutine",
+        "AndroidManifest.xml：INTERNET 權限、usesCleartextTraffic=true（允許HTTP）",
+        "設備授權Token：delay(3000) 延遲3秒取得Token的競賽特殊需求",
+        "錯誤處理：try/catch IOException、HTTP 狀態碼判斷"
       ],
       exercises: [
         {
-          title: "練習一：Retrofit API 整合",
+          title: "練習一：HttpURLConnection GET 請求",
           questions: [
             {
-              q: "建立一個 Retrofit Client，連接 ZCharge Plan Web API（baseUrl: http://10.0.2.2:5000/api/）。定義 API 介面，包含：取得充電站清單(GET)、取得單一充電站(GET by ID)、新增充電紀錄(POST)",
-              answer: `// ApiService.kt - API介面定義
-interface ApiService {
-    @GET("stations")
-    suspend fun getStations(): List<StationDto>
+              q: "建立 ApiClient 物件（singleton），封裝 HTTP GET 請求。實作 getStations() 函式，呼叫 GET /api/stations 並回傳 List<ChargingStation>",
+              answer: `// ApiClient.kt - 全部使用內建函式庫，不需 Retrofit/Gson
+object ApiClient {
+    private const val BASE_URL = "http://10.0.2.2:5000/api"
+    var token: String = ""  // 設備授權Token，fetchToken後設定
 
-    @GET("stations/{id}")
-    suspend fun getStation(@Path("id") id: Int): StationDto
+    // 通用 GET 方法
+    private fun httpGet(path: String): String {
+        val url = java.net.URL("$BASE_URL$path")
+        val conn = url.openConnection() as java.net.HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("Accept",        "application/json")
+        conn.setRequestProperty("Authorization", token)
+        conn.connectTimeout = 10_000
+        conn.readTimeout    = 10_000
 
-    @POST("charging-records")
-    suspend fun startCharging(@Body request: StartChargingRequest): ChargingRecordDto
-
-    @GET("members/{id}/records")
-    suspend fun getMemberRecords(
-        @Path("id") memberId: Int,
-        @Header("Authorization") token: String
-    ): List<ChargingRecordDto>
-}
-
-// RetrofitClient.kt - Singleton
-object RetrofitClient {
-    private const val BASE_URL = "http://10.0.2.2:5000/api/"  // 模擬器用localhost
-
-    val apiService: ApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .addConverterFactory(GsonConverterFactory.create())
-            .client(OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build())
-            .build()
-            .create(ApiService::class.java)
+        return try {
+            if (conn.responseCode == 200)
+                conn.inputStream.bufferedReader().readText()
+            else
+                throw Exception("HTTP \${conn.responseCode}")
+        } finally {
+            conn.disconnect()
+        }
     }
-}
 
-// 使用方式（在Fragment中）
-lifecycleScope.launch {
-    try {
-        val stations = RetrofitClient.apiService.getStations()
-        adapter.submitList(stations.map { it.toDomain() })
-    } catch (e: IOException) {
-        showError("網路連線失敗，請檢查網路設定")
-    } catch (e: HttpException) {
-        showError("伺服器錯誤：\${e.code()}")
-    }
+    // 取得充電站清單
+    suspend fun getStations(): List<ChargingStation> =
+        withContext(Dispatchers.IO) {
+            val json   = httpGet("/stations")
+            val array  = org.json.JSONArray(json)
+            List(array.length()) { i ->
+                val obj = array.getJSONObject(i)
+                ChargingStation(
+                    id        = obj.getInt("stationId"),
+                    name      = obj.getString("stationName"),
+                    address   = obj.getString("address"),
+                    available = obj.getInt("availablePiles"),
+                    total     = obj.getInt("totalPiles")
+                )
+            }
+        }
+
+    // 取得單一充電站
+    suspend fun getStation(id: Int): ChargingStation =
+        withContext(Dispatchers.IO) {
+            val obj = org.json.JSONObject(httpGet("/stations/$id"))
+            ChargingStation(
+                id        = obj.getInt("stationId"),
+                name      = obj.getString("stationName"),
+                address   = obj.getString("address"),
+                available = obj.getInt("availablePiles"),
+                total     = obj.getInt("totalPiles")
+            )
+        }
 }`
             },
             {
-              q: "競賽特殊需求：設備授權Token需要延遲3秒才能取得。實作一個Token管理類別，在App啟動時取得Token並快取，之後所有API請求自動帶入Authorization header",
-              answer: `// DeviceTokenManager.kt
-object DeviceTokenManager {
-    private var _token: String? = null
-    val token get() = _token
+              q: "競賽特殊需求：設備授權 Token 需延遲3秒取得。實作 fetchToken() 函式（POST 請求），並在 SplashActivity 啟動時呼叫，完成後進入主畫面",
+              answer: `// ApiClient.kt 新增 POST + fetchToken
+object ApiClient {
+    // ...（延續上題）
 
-    suspend fun fetchToken(deviceId: String): String {
-        delay(3000)  // 競賽要求：等待3秒
+    // 通用 POST 方法
+    private fun httpPost(path: String, body: String): String {
+        val url  = java.net.URL("$BASE_URL$path")
+        val conn = url.openConnection() as java.net.HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.doOutput      = true
+        conn.setRequestProperty("Content-Type",  "application/json")
+        conn.setRequestProperty("Accept",        "application/json")
+        conn.setRequestProperty("Authorization", token)
 
-        // 呼叫取得Token的API
-        val response = RetrofitClient.apiService.getDeviceToken(
-            DeviceTokenRequest(deviceId = deviceId)
-        )
-        _token = response.token
-        return response.token
+        conn.outputStream.bufferedWriter().use { it.write(body) }
+
+        return try {
+            conn.inputStream.bufferedReader().readText()
+        } finally {
+            conn.disconnect()
+        }
     }
 
-    fun clear() { _token = null }
+    // 取得設備授權Token（競賽要求延遲3秒）
+    suspend fun fetchToken(deviceId: String) {
+        withContext(Dispatchers.IO) {
+            delay(3_000)  // 競賽規定：等待3秒
+            val body = """{"deviceId":"$deviceId"}"""
+            val resp = httpPost("/auth/device-token", body)
+            token = org.json.JSONObject(resp).getString("token")
+        }
+    }
 }
 
-// SplashActivity.kt - App啟動畫面
-class SplashActivity : AppCompatActivity() {
+// SplashActivity.kt（Compose 版本）
+class SplashActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_splash)
+        setContent {
+            var ready by remember { mutableStateOf(false) }
+            var error by remember { mutableStateOf("") }
 
-        lifecycleScope.launch {
-            try {
-                val deviceId = Settings.Secure.getString(
-                    contentResolver, Settings.Secure.ANDROID_ID)
-                DeviceTokenManager.fetchToken(deviceId)
-                startActivity(Intent(this@SplashActivity, MainActivity::class.java))
-                finish()
-            } catch (e: Exception) {
-                Toast.makeText(this@SplashActivity, "設備授權失敗", Toast.LENGTH_LONG).show()
+            LaunchedEffect(Unit) {
+                try {
+                    val deviceId = android.provider.Settings.Secure.getString(
+                        contentResolver,
+                        android.provider.Settings.Secure.ANDROID_ID
+                    )
+                    ApiClient.fetchToken(deviceId)
+                    ready = true
+                } catch (e: Exception) {
+                    error = "設備授權失敗：\${e.message}"
+                }
+            }
+
+            when {
+                error.isNotEmpty() -> Text(error, color = Color.Red)
+                ready -> {
+                    startActivity(Intent(this@SplashActivity, MainActivity::class.java))
+                    finish()
+                }
+                else -> CircularProgressIndicator()
             }
         }
     }
@@ -1358,61 +1612,77 @@ class SplashActivity : AppCompatActivity() {
       ],
       codeExamples: [
         {
-          lang: "kotlin", label: "Kotlin - Retrofit build.gradle.kts 設定",
-          code: `// build.gradle.kts (app)
-dependencies {
-    // Retrofit + Gson
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+          lang: "kotlin", label: "Kotlin - Compose 中呼叫 API 並顯示清單",
+          code: `// AndroidManifest.xml（只需加這兩行，不需其他套件）
+// <uses-permission android:name="android.permission.INTERNET"/>
+// <application android:usesCleartextTraffic="true" ...>
 
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+// StationListScreen.kt - Compose UI + API 呼叫
+@Composable
+fun StationListScreen() {
+    // produceState：在 Coroutine 中載入資料，結果驅動 UI
+    val stationsState = produceState<Result<List<ChargingStation>>>(
+        initialValue = Result.Loading
+    ) {
+        value = try {
+            Result.Success(ApiClient.getStations())
+        } catch (e: Exception) {
+            Result.Error(e.message ?: "未知錯誤")
+        }
+    }
 
-    // ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+    when (val state = stationsState.value) {
+        is Result.Loading -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is Result.Success -> {
+            LazyColumn {
+                items(state.data) { station ->
+                    StationCard(station, onClick = { /* 導航至詳情 */ })
+                }
+            }
+        }
+        is Result.Error -> {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("載入失敗：\${state.message}", color = Color.Red)
+                Button(onClick = { /* TODO: 重試 */ }) { Text("重試") }
+            }
+        }
+    }
 }
 
-// AndroidManifest.xml 加入
-// <uses-permission android:name="android.permission.INTERNET"/>
-// <application android:usesCleartextTraffic="true" ...>  (開發時允許HTTP)
-
-// DTO資料類別
-data class StationDto(
-    @SerializedName("stationId")    val id: Int,
-    @SerializedName("stationName")  val name: String,
-    @SerializedName("address")      val address: String,
-    @SerializedName("availablePiles") val available: Int,
-    @SerializedName("totalPiles")   val total: Int
-) {
-    fun toDomain() = ChargingStation(id, name, address, available, total)
+// 簡易 Result 封裝
+sealed class Result<out T> {
+    object Loading : Result<Nothing>()
+    data class Success<T>(val data: T) : Result<T>()
+    data class Error(val message: String) : Result<Nothing>()
 }`
         }
       ],
       testData: {
-        desc: "常用 HTTP 狀態碼對應處理",
+        desc: "HttpURLConnection vs Retrofit 比較",
         table: {
-          headers: ["狀態碼", "說明", "App處理方式"],
+          headers: ["比較項目", "HttpURLConnection（內建）", "Retrofit（外部套件）"],
           rows: [
-            ["200 OK", "成功", "解析回應，更新UI"],
-            ["201 Created", "新增成功", "顯示成功訊息"],
-            ["400 Bad Request", "請求格式錯誤", "顯示「請求格式錯誤」"],
-            ["401 Unauthorized", "未授權/Token過期", "導航至登入頁"],
-            ["404 Not Found", "資源不存在", "顯示「找不到資料」"],
-            ["500 Server Error", "伺服器錯誤", "顯示「伺服器異常，請稍後再試」"]
+            ["依賴套件", "✅ 零套件，內建", "需加入 retrofit2、gson、okhttp"],
+            ["JSON 解析", "org.json（內建）", "@SerializedName + data class"],
+            ["程式碼量", "略多（手動解析）", "略少（自動對應）"],
+            ["競賽適用", "✅ 無套件下載問題", "需要網路/離線快取"],
+            ["錯誤處理", "try/catch + responseCode", "catch HttpException"],
+            ["非同步", "withContext(IO)", "suspend 函式（自動）"]
           ]
         }
       },
       homework: {
-        title: "Week 8 作業：連接後端API顯示資料",
+        title: "Week 8 作業：HttpURLConnection 連接後端 API",
         requirements: [
-          "建立 Retrofit Client 連接本地 ASP.NET Core API",
-          "充電站清單從API取得（非假資料）",
-          "實作下拉重新整理(SwipeRefreshLayout)",
-          "網路失敗時顯示錯誤提示 + 重試按鈕",
-          "加入Loading動畫（API呼叫期間顯示ProgressBar）"
+          "建立 ApiClient singleton，以 HttpURLConnection 實作 GET /api/stations",
+          "充電站清單從 API 取得後顯示於 LazyColumn（非假資料）",
+          "實作 fetchToken（POST + delay 3秒），在 Splash 畫面取得後進入主畫面",
+          "載入中顯示 CircularProgressIndicator，失敗顯示錯誤訊息 + 重試按鈕",
+          "提交截圖：App 顯示來自 API 的真實資料"
         ]
       }
     },
