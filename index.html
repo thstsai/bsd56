@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BSD56 第56屆全國技能競賽 商務軟體設計培訓平台</title>
+  <meta name="description" content="第56屆全國技能競賽 09商務軟體設計 選手培訓課程，包含12週訓練計畫、練習題、解答及進度追蹤">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💻</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ── Navbar ─────────────────────────────────────────── -->
+<nav class="site-navbar">
+  <a class="brand" href="#" onclick="showSection('home')">
+    <span class="badge-num">BSD56</span>
+    商務軟體設計培訓
+  </a>
+  <ul class="nav-links">
+    <li><a href="#" data-section="home">🏠 首頁</a></li>
+    <li><a href="#" data-section="scoring">📊 得分分析</a></li>
+    <li><a href="#" data-section="curriculum">📅 培訓課程</a></li>
+    <li><a href="#" data-section="progress">✅ 進度追蹤</a></li>
+    <li><a href="#" data-section="upload">📤 作業繳交</a></li>
+  </ul>
+  <div class="nav-spacer"></div>
+  <div class="progress-badge" id="progress-badge">進度 0/12</div>
+</nav>
+
+<!-- ── Home Section ───────────────────────────────────── -->
+<div id="section-home">
+  <div class="hero">
+    <div class="hero-title">🏆 第56屆全國技能競賽</div>
+    <div class="hero-subtitle">09 商務軟體設計 選手培訓平台</div>
+    <div class="hero-badges">
+      <span class="hero-badge">📊 SA&DB 系統分析與資料庫</span>
+      <span class="hero-badge">💻 C# 商務軟體開發</span>
+      <span class="hero-badge">📱 Android App 設計</span>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-card">
+        <div class="stat-num">12</div>
+        <div class="stat-label">週培訓課程</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">36</div>
+        <div class="stat-label">實作練習題</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">3</div>
+        <div class="stat-label">核心模組</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">55+56</div>
+        <div class="stat-label">分析競賽試題</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="home-content">
+    <!-- Competition context -->
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+      <div class="card">
+        <div class="card-header">📋 競賽說明</div>
+        <div class="card-body" style="font-size:0.875rem;">
+          <p style="margin:0 0 0.75rem;">本培訓平台針對參加<strong>第56屆全國技能競賽 商務軟體設計</strong>（科目代碼：09）的選手設計，課程架構融合 55分區、55全國、56分區 三套試題的重點技術。</p>
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            <div><strong>📁 SA&DB 模組</strong> — SQL Server 2022, 3NF正規化, ER圖, Use Case圖</div>
+            <div><strong>🖥 Software 模組</strong> — C# .NET 8, WinForms, ADO.NET</div>
+            <div><strong>📱 App 模組</strong> — Android Studio Ladybug, Kotlin 2.1.10, Retrofit</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">⚡ 快速入門</div>
+        <div class="card-body" style="font-size:0.875rem;">
+          <ol style="margin:0;padding-left:1.25rem;line-height:2;">
+            <li>查看 <a href="#" onclick="showSection('scoring')" style="color:var(--primary-light);">得分分析</a>，了解各模組配分重點</li>
+            <li>按照 <a href="#" onclick="showSection('curriculum')" style="color:var(--primary-light);">12週課程</a> 循序學習</li>
+            <li>每週完成練習題後，點擊「標記完成」追蹤進度</li>
+            <li>完成作業後，至 <a href="#" onclick="showSection('upload')" style="color:var(--primary-light);">作業繳交</a> 上傳連結</li>
+          </ol>
+          <div style="margin-top:0.75rem;" class="alert alert-warning" style="margin:0;">
+            ⚠ 入門選手優先熟悉 SA&DB + 基礎CRUD，特殊功能有餘力再練習
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upcoming weeks -->
+    <h2 class="section-title">📅 建議本週練習</h2>
+    <p class="section-subtitle">根據你的進度，建議從以下週次開始</p>
+    <div class="week-grid" id="home-week-cards"></div>
+
+    <!-- Trial sets reference -->
+    <h2 class="section-title" style="margin-top:1.5rem;">📂 競賽試題參考</h2>
+    <div class="grid-3" style="margin-top:0.75rem;">
+      <div class="card">
+        <div class="card-header"><span class="badge-module badge-db">55分區</span> ZCharge Plan</div>
+        <div class="card-body" style="font-size:0.85rem;">
+          <p>EV充電網路管理系統<br>3個模組：SA&DB + Software + App</p>
+          <ul style="padding-left:1rem;margin:0;color:var(--text-muted);">
+            <li>6個主要資料表</li>
+            <li>供應商/充電站/充電樁CRUD</li>
+            <li>車主行動App</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="badge-module badge-sw">55全國</span> ZCharge + ZPlus</div>
+        <div class="card-body" style="font-size:0.85rem;">
+          <p>EV充電+車輛管理整合系統<br>7個模組（含英文資料輸入+簡報）</p>
+          <ul style="padding-left:1rem;margin:0;color:var(--text-muted);">
+            <li>地圖整合標示充電站</li>
+            <li>Webhook整合</li>
+            <li>記憶體遊戲</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="badge-module badge-app">56分區</span> LinkOne</div>
+        <div class="card-body" style="font-size:0.85rem;">
+          <p>企業社交平台<br>3個模組：SA&DB + Software + App</p>
+          <ul style="padding-left:1rem;margin:0;color:var(--text-muted);">
+            <li>資料遷移+New_前綴規範</li>
+            <li>二層留言系統</li>
+            <li>貼圖商城+內容審核</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Scoring Section ─────────────────────────────────── -->
+<div class="section" id="section-scoring">
+  <h1 class="section-title">📊 得分分析與競賽策略</h1>
+  <p class="section-subtitle">基於55分區、55全國、56分區試題分析，入門選手最佳得分路徑</p>
+  <div id="scoring-container"></div>
+</div>
+
+<!-- ── Curriculum Section ──────────────────────────────── -->
+<div class="section" id="section-curriculum">
+  <h1 class="section-title">📅 12週培訓課程</h1>
+  <p class="section-subtitle">點擊週次卡片查看詳細內容、練習題、程式範例及作業</p>
+
+  <!-- Legend -->
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.8rem;align-items:center;">
+    <strong>模組：</strong>
+    <span><span class="badge-module badge-db">SA&DB</span> 系統分析&資料庫</span>
+    <span><span class="badge-module badge-sw">C# 軟體</span> 商務軟體設計</span>
+    <span><span class="badge-module badge-app">Android</span> 行動App設計</span>
+    <span><span class="badge-module badge-all">整合練習</span> 綜合模擬</span>
+  </div>
+
+  <div class="week-grid" id="curriculum-grid"></div>
+</div>
+
+<!-- ── Progress Section ────────────────────────────────── -->
+<div class="section" id="section-progress">
+  <h1 class="section-title">✅ 學習進度追蹤</h1>
+  <p class="section-subtitle">勾選已完成的週次，追蹤你的培訓進度（資料存在本機瀏覽器）</p>
+  <div id="progress-container"></div>
+</div>
+
+<!-- ── Upload Section ─────────────────────────────────── -->
+<div class="section" id="section-upload">
+  <h1 class="section-title">📤 作業繳交</h1>
+  <p class="section-subtitle">每週完成作業後，請上傳至GitHub並在此提交連結，讓老師追蹤你的進度</p>
+
+  <div class="upload-steps">
+    <div class="upload-step">
+      <div class="step-num">1</div>
+      <h4>完成每週作業</h4>
+      <p>依照週次作業要求，完成程式碼或設計圖</p>
+    </div>
+    <div class="upload-step">
+      <div class="step-num">2</div>
+      <h4>上傳到 GitHub</h4>
+      <p>將作業推送到你的 GitHub Repository（命名：BSD56_W{n}）</p>
+    </div>
+    <div class="upload-step">
+      <div class="step-num">3</div>
+      <h4>填寫繳交表單</h4>
+      <p>填寫下方表單，提交 GitHub Repo 連結</p>
+    </div>
+    <div class="upload-step">
+      <div class="step-num">4</div>
+      <h4>等待批閱</h4>
+      <p>老師會在 GitHub Issues 中留下批閱意見</p>
+    </div>
+  </div>
+
+  <div class="alert alert-info">
+    💡 <strong>提示：</strong>請先在 GitHub 建立公開 Repository，命名為 <code>BSD56_Homework</code>，每週建立一個資料夾（如 <code>Week01/</code>），並將所有作業檔案放入。
+  </div>
+
+  <div class="submit-form" id="upload-form-wrapper">
+    <h3 style="margin:0 0 1.25rem;font-size:1.1rem;">📝 繳交作業表單</h3>
+    <form id="upload-form">
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label" for="inp-name">學員姓名 *</label>
+          <input class="form-input" id="inp-name" type="text" placeholder="請輸入你的姓名" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inp-week">繳交週次 *</label>
+          <select class="form-select" id="inp-week" required>
+            <option value="">選擇週次</option>
+            <option value="1">Week 1 — 需求分析與使用案例圖</option>
+            <option value="2">Week 2 — ER圖設計與資料庫正規化</option>
+            <option value="3">Week 3 — T-SQL語法與測試資料建立</option>
+            <option value="4">Week 4 — C# WinForms視窗程式基礎</option>
+            <option value="5">Week 5 — C# 資料庫連接與CRUD操作</option>
+            <option value="6">Week 6 — C# 進階功能：認證、計時器</option>
+            <option value="7">Week 7 — Android/Kotlin基礎：UI設計</option>
+            <option value="8">Week 8 — Android REST API整合</option>
+            <option value="9">Week 9 — 55分區模擬競賽</option>
+            <option value="10">Week 10 — 56分區LinkOne資料庫設計</option>
+            <option value="11">Week 11 — 56分區LinkOne軟體與App</option>
+            <option value="12">Week 12 — 全國賽模擬與競賽策略</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inp-url">GitHub Repository 連結</label>
+        <input class="form-input" id="inp-url" type="url" placeholder="https://github.com/你的帳號/BSD56_Homework">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="inp-note">說明 / 備註</label>
+        <textarea class="form-textarea" id="inp-note" placeholder="說明本週完成了哪些內容、遭遇的困難或問題..."></textarea>
+      </div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary">📤 提交作業（開啟 GitHub Issues）</button>
+        <a href="https://github.com/thstsai/BSD56/issues" target="_blank" class="btn btn-outline">📋 查看所有繳交紀錄</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Direct links -->
+  <div class="card" style="margin-top:1.5rem;">
+    <div class="card-header">🔗 快速連結</div>
+    <div class="card-body">
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <a href="https://github.com/thstsai/BSD56" target="_blank" class="btn btn-outline btn-sm">🏠 培訓資源 GitHub</a>
+        <a href="https://github.com/thstsai/BSD56/issues/new" target="_blank" class="btn btn-outline btn-sm">📝 新增Issues繳交</a>
+        <a href="https://thstsai.github.io/BSD56" target="_blank" class="btn btn-outline btn-sm">🌐 網站連結</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Week Detail Modal ───────────────────────────────── -->
+<div class="week-detail" id="week-modal">
+  <div class="week-detail-inner">
+    <div class="week-detail-header mod-db">
+      <div>
+        <div class="week-detail-title"></div>
+        <div class="week-detail-sub"></div>
+      </div>
+      <button class="btn-close-detail" onclick="closeWeekDetail()">✕ 關閉</button>
+    </div>
+    <div class="week-detail-body">
+      <div class="detail-tabs">
+        <button class="detail-tab active" data-tab="tab-objectives" onclick="switchTab(this)">🎯 學習目標</button>
+        <button class="detail-tab" data-tab="tab-exercises" onclick="switchTab(this)">📝 練習題</button>
+        <button class="detail-tab" data-tab="tab-code" onclick="switchTab(this)">💻 程式範例</button>
+        <button class="detail-tab" data-tab="tab-data" onclick="switchTab(this)">📊 測試資料</button>
+        <button class="detail-tab" data-tab="tab-homework" onclick="switchTab(this)">📋 本週作業</button>
+      </div>
+      <div class="tab-content active" id="tab-objectives"></div>
+      <div class="tab-content" id="tab-exercises"></div>
+      <div class="tab-content" id="tab-code"></div>
+      <div class="tab-content" id="tab-data"></div>
+      <div class="tab-content" id="tab-homework"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────── -->
+<footer style="background:var(--primary);color:rgba(255,255,255,0.7);text-align:center;padding:1.5rem;font-size:0.8rem;margin-top:3rem;">
+  <div style="max-width:800px;margin:0 auto;">
+    <div style="color:#fff;font-weight:700;margin-bottom:0.5rem;">BSD56 第56屆全國技能競賽 商務軟體設計培訓平台</div>
+    <div>培訓資源 · <a href="https://github.com/thstsai/BSD56" style="color:rgba(255,255,255,0.8);">GitHub: thstsai/BSD56</a></div>
+    <div style="margin-top:0.5rem;color:rgba(255,255,255,0.5);">本平台課程內容依據 55分區、55全國、56分區競賽試題分析設計</div>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

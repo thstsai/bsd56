@@ -1,0 +1,61 @@
+{
+  // 充电管道的唯一标识符，用于区分充电设备或管道
+  "chargingPipeId": "6f5cc37a-8a3b-4740-a296-b8e892769e2a",
+
+  // 数据记录的时间戳，格式为YYYY-MM-DD HH:mm:ss
+  "timestamp": "2024-01-01 08:00:01",
+
+  // 电力相关数据
+  "powerData": {
+    "voltage": 750,         // 当前充电电压，单位：伏特（V）
+    "current": 250,         // 当前充电电流，单位：安培（A）
+    "power": 187.5          // 实时充电功率，单位：千瓦（kW）
+  },
+
+  // 每个连接器的状态数据
+  "connectorStatus": [
+    {
+      "connectorId": "8c2f8a6c-73e5-49da-b785-0f60b167d692", // 连接器的唯一标识符
+      "temperature": "75",                                   // 连接器当前温度，单位：摄氏度（℃）
+      "serialNo": "UZ0ITOALPF866A13H",                       // 与连接器相关的车辆序列号
+      "chargingProgress": 75,                                // 当前充电进度，单位：百分比（%）
+      "chargingTime": 45,                                    // 已充电时间，单位：分钟
+      "energyDelivered": 12.5                                // 已充电电量，单位：千瓦时（kWh）
+    },
+    {
+      "connectorId": "e49d2cfb-012e-487f-b68d-e7566bc0e1a3", // 第二个连接器的唯一标识符
+      "temperature": "75",                                   // 第二个连接器当前温度，单位：摄氏度（℃）
+      "serialNo": "UZ0ITOALPF866A13H",                       // 与第二个连接器相关的车辆序列号
+      "chargingProgress": 75,                                // 当前充电进度，单位：百分比（%）
+      "chargingTime": 45,                                    // 已充电时间，单位：分钟
+      "energyDelivered": 12.5                                // 已充电电量，单位：千瓦时（kWh）
+    }
+  ],
+
+  // 温度相关数据
+  "temperatureData": {
+    "internalTemperature": 80 // 充电站内部温度，单位：摄氏度（℃）
+  },
+
+  // 安全相关数据
+  "safetyData": {
+    "leakageCurrent": 3,             // 漏电流值，单位：毫安（mA）
+    "overloadStatus": "正常",         // 过载状态，可为“正常”或“异常”
+    "shortCircuitStatus": "正常",     // 短路状态，可为“正常”或“异常”
+    "coverOpenStatus": "關閉"         // 防护盖状态，可为“開啟”或“關閉”
+  },
+
+  // 通讯状态数据
+  "communicationStatus": {
+    "networkStatus": "連線中",         // 网络连接状态，可为“連線中”或“未連線”
+    "protocol": "OCPP 2.0.1",         // 使用的通讯协议版本
+    "latency": 120                    // 网络延迟时间，单位：毫秒（ms）
+  },
+
+  // 硬件监控数据
+  "hardwareMonitoring": {
+    "coolingFanStatus": "啟動中",     // 散热风扇状态，可为“啟動中”或“關閉”
+    "bmsStatus": "正常",              // 电池管理系统（BMS）状态，可为“正常”或“异常”
+    "ledStatus": "正常"               // 指示灯状态，可为“正常”或“异常”
+  }
+}
