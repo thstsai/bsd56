@@ -140,6 +140,17 @@ function openWeekDetail(id) {
     <ul class="topics-list">${week.topics.map(t=>`<li>▸ ${t}</li>`).join('')}</ul>`;
 
   // Exercises tab
+  const answerBlock = week.answersReleased
+    ? (q) => `
+          <div class="answer-toggle">
+            <button class="btn-show-answer" onclick="toggleAnswer(this)">💡 顯示解答</button>
+            <div class="answer-content">
+              <strong style="color:var(--success)">✅ 解答：</strong>
+              <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.8rem;">${escHtml(q.answer)}</pre>
+            </div>
+          </div>`
+    : () => `<div class="answer-locked">🔒 解答尚未開放 — 老師批改作業後將於每週五線上討論時公布</div>`;
+
   const exHtml = week.exercises.map((ex,ei) => `
     <div class="exercise-item">
       <div class="exercise-header" onclick="toggleExercise(this)">
@@ -151,13 +162,7 @@ function openWeekDetail(id) {
             <strong>問題 ${qi+1}</strong>
             <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.82rem;">${escHtml(q.q)}</pre>
           </div>
-          <div class="answer-toggle">
-            <button class="btn-show-answer" onclick="toggleAnswer(this)">💡 顯示解答</button>
-            <div class="answer-content">
-              <strong style="color:var(--success)">✅ 解答：</strong>
-              <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.8rem;">${escHtml(q.answer)}</pre>
-            </div>
-          </div>
+          ${answerBlock(q)}
           ${qi < ex.questions.length-1 ? '<hr style="margin:.75rem 0;border-color:var(--border);">' : ''}`).join('')}
       </div>
     </div>`).join('');

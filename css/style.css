@@ -765,6 +765,50 @@ body {
 ::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #888; }
 
+/* ---- Teacher Info Card ---- */
+.teacher-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  background: linear-gradient(135deg, #1a3a6c 0%, #2456a4 100%);
+  color: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.teacher-avatar { font-size: 2.5rem; line-height: 1; }
+.teacher-info { flex: 1; min-width: 150px; }
+.teacher-name { font-weight: 700; font-size: 1rem; }
+.teacher-email {
+  color: #90caf9;
+  font-size: .875rem;
+  text-decoration: none;
+}
+.teacher-email:hover { text-decoration: underline; }
+.teacher-meeting {
+  border-left: 2px solid rgba(255,255,255,.35);
+  padding-left: 1.25rem;
+  min-width: 200px;
+}
+.teacher-meeting-label { font-size: .75rem; opacity: .75; margin-bottom: .2rem; }
+.teacher-meeting-time { font-weight: 700; font-size: 1.05rem; }
+.teacher-meeting-sub { font-size: .8rem; opacity: .8; margin-top: .2rem; }
+
+/* ---- Locked Answer ---- */
+.answer-locked {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: #f8f9fa;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: .6rem .9rem;
+  font-size: .82rem;
+  color: var(--text-muted);
+  margin-top: .5rem;
+}
+
 /* ---- Resource Links ---- */
 .resource-link {
   display: flex;

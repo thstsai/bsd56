@@ -1,4 +1,4 @@
-/* BSD56 Curriculum Data - 第56屆全國技能競賽 商務軟體設計 培訓課程資料 */
+﻿/* BSD56 Curriculum Data - 第56屆全國技能競賽 商務軟體設計 培訓課程資料 */
 
 const BSD56Data = {
 
@@ -68,6 +68,7 @@ const BSD56Data = {
       title: "需求分析與使用案例圖",
       desc: "解讀競賽試題，識別系統Actor與Use Case，繪製標準UML圖",
       diff: 2, hours: 4,
+      answersReleased: false,
       objectives: [
         "能從試題文件中識別所有系統使用者(Actor)",
         "能識別至少15個有意義的使用案例(Use Case)",
@@ -158,6 +159,7 @@ INSERT INTO UseCaseList (Actor, UseCase, Relation, RelatedUC) VALUES
       title: "ER 圖設計與資料庫正規化",
       desc: "識別實體與關係，設計符合3NF的資料庫架構，繪製標準ER圖",
       diff: 4, hours: 5,
+      answersReleased: false,
       objectives: [
         "能識別系統中的主要實體(Entity)及其屬性",
         "能正確定義主鍵(PK)、外鍵(FK)和候選鍵",
@@ -308,6 +310,7 @@ CREATE TABLE ChargingRecord (
       title: "T-SQL 語法與測試資料建立",
       desc: "熟練T-SQL建表語法、約束條件，並高效產生100筆以上測試資料",
       diff: 3, hours: 4,
+      answersReleased: false,
       objectives: [
         "能正確撰寫帶有各種約束條件的 CREATE TABLE 語法",
         "能使用 SQL 批次插入100筆以上真實感測試資料",
@@ -477,6 +480,7 @@ FROM (
       title: "C# WinForms 視窗程式基礎",
       desc: "建立Visual Studio開發環境，熟悉WinForms控制項與事件驅動程式設計",
       diff: 2, hours: 5,
+      answersReleased: false,
       objectives: [
         "能建立 .NET 8 WinForms 專案並完成基礎設定",
         "熟悉常用控制項：TextBox、Button、DataGridView、TabControl、ComboBox",
@@ -618,6 +622,7 @@ public partial class FrmSupplierManagement : Form
       title: "C# 資料庫連接與 CRUD 操作",
       desc: "使用ADO.NET連接SQL Server，實作完整的查詢、新增、修改、刪除功能",
       diff: 3, hours: 6,
+      answersReleased: false,
       objectives: [
         "能正確設定連接字串並管理 SqlConnection 生命週期",
         "能使用 SqlCommand 執行 SELECT/INSERT/UPDATE/DELETE",
@@ -844,6 +849,7 @@ public class SupplierRepository
       title: "C# 進階功能：認證、計時器與特殊整合",
       desc: "實作登入認證、角色權限、閒置自動登出(2分鐘)及進階業務功能",
       diff: 4, hours: 6,
+      answersReleased: false,
       objectives: [
         "能實作多角色的登入/登出系統",
         "能實作閒置2分鐘自動登出（含30秒倒數警告）",
@@ -1053,6 +1059,7 @@ private bool IsPasswordStrong(string password)
       title: "Android/Kotlin 基礎：UI 設計與導航",
       desc: "建立Android開發環境，熟悉Activity、Fragment、RecyclerView與底部導航",
       diff: 3, hours: 5,
+      answersReleased: false,
       objectives: [
         "能建立 Android Studio Ladybug + Kotlin 專案",
         "能設計 ConstraintLayout 響應式佈局",
@@ -1235,6 +1242,7 @@ class FindStationFragment : Fragment(R.layout.fragment_find_station) {
       title: "Android REST API 整合",
       desc: "使用Retrofit呼叫後端Web API，搭配Kotlin Coroutines處理非同步請求",
       diff: 4, hours: 6,
+      answersReleased: false,
       objectives: [
         "能使用 Retrofit2 定義 API 介面並發送 GET/POST 請求",
         "能使用 Kotlin Coroutines 在背景執行網路請求",
@@ -1414,6 +1422,7 @@ data class StationDto(
       title: "55 分區模擬競賽 — ZCharge Plan",
       desc: "完整模擬55分區競賽流程，3模組輪流練習，評估現有能力並找出弱點",
       diff: 3, hours: 8,
+      answersReleased: false,
       objectives: [
         "在限定時間內完成SA&DB模組（建議：2小時）",
         "在限定時間內完成Software模組（建議：3小時）",
@@ -1509,6 +1518,7 @@ private void gmap_OnMarkerClick(GMapMarker item, MouseEventArgs e)
       title: "56 分區 — LinkOne 資料庫設計",
       desc: "分析LinkOne平台需求，設計資料遷移方案、二層留言、內容安全系統",
       diff: 4, hours: 6,
+      answersReleased: false,
       objectives: [
         "理解56分區 LinkOne 的業務需求與資料庫改造範疇",
         "能設計符合 New_ 前綴規範的新增資料表",
@@ -1666,6 +1676,7 @@ DROP TABLE #TempChatImport;`
       title: "56 分區 — LinkOne 軟體與 App 整合",
       desc: "實作LinkOne的C#內容審核後台與Android社交功能App",
       diff: 4, hours: 8,
+      answersReleased: false,
       objectives: [
         "能實作內容審核工作流程（AI評分顯示 + 人工批准/拒絕）",
         "能實作貼圖商城的瀏覽與購買流程",
@@ -1874,6 +1885,7 @@ private void btnRequestRefund_Click(object sender, EventArgs e)
       title: "全國賽模擬 — 系統整合與競賽策略",
       desc: "完整模擬全國賽流程，練習簡報技巧，評估並優化所有模組表現",
       diff: 5, hours: 10,
+      answersReleased: false,
       objectives: [
         "能在全國賽時間限制內完成所有模組的核心功能",
         "能在1.5-3分鐘內清晰說明系統設計決策",
