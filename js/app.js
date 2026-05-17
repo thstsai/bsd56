@@ -13,14 +13,14 @@ function initFirebase() {
   } catch(e) { /* continue without cloud sync */ }
 }
 
-// Real-time listener for answer release config; falls back to data.js flags
+// Real-time listener for answer release config; controls homework tab only
 function loadAnswerConfig() {
   if (!_db) return;
   _db.collection('settings').doc('answers').onSnapshot(snap => {
     _answersReleased = snap.exists ? snap.data() : {};
     renderCurriculum();
     renderHome();
-    refreshExercisesTab(); // refresh open modal exercises tab if any
+    refreshHomeworkTab();
   }, () => {});
 }
 
@@ -208,26 +208,16 @@ function renderCurriculum() {
 // ── Week Detail Modal ─────────────────────────────────────
 let _currentWeekId = null;
 
-// Builds exercises tab HTML for a given week id — called on open AND on Firestore update
+// Builds exercises tab HTML — answers always available, no teacher lock
 function buildExercisesHtml(id) {
   const week = BSD56Data.weeks.find(w => w.id === id);
   if (!week) return '';
-  const answerBlock = isAnswerReleased(id)
-    ? (q) => `
-          <div class="answer-toggle">
-            <button class="btn-show-answer" onclick="toggleAnswer(this)">💡 顯示解答</button>
-            <div class="answer-content">
-              <strong style="color:var(--success)">✅ 解答：</strong>
-              <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.8rem;">${escHtml(q.answer)}</pre>
-            </div>
-          </div>`
-    : () => `<div class="answer-locked">🔒 解答尚未開放 — 老師批改作業後將於每週五線上討論時公布</div>`;
 
-  const toolbar = isAnswerReleased(id) ? `
+  const toolbar = `
     <div class="exercises-toolbar">
       <button class="btn btn-outline btn-sm" onclick="expandAllAnswers()">📖 展開全部解答</button>
       <button class="btn btn-outline btn-sm" onclick="collapseAllAnswers()">🔼 收合全部</button>
-    </div>` : '';
+    </div>`;
 
   return toolbar + week.exercises.map(ex => `
     <div class="exercise-item">
@@ -240,10 +230,67 @@ function buildExercisesHtml(id) {
             <strong>問題 ${qi+1}</strong>
             <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.82rem;">${escHtml(q.q)}</pre>
           </div>
-          ${answerBlock(q)}
+          <div class="answer-toggle">
+            <button class="btn-show-answer" onclick="toggleAnswer(this)">💡 顯示解答</button>
+            <div class="answer-content">
+              <strong style="color:var(--success)">✅ 解答：</strong>
+              <pre style="white-space:pre-wrap;font-family:inherit;margin:.4rem 0 0;font-size:.8rem;">${escHtml(q.answer)}</pre>
+            </div>
+          </div>
           ${qi < ex.questions.length-1 ? '<hr style="margin:.75rem 0;border-color:var(--border);">' : ''}`).join('')}
       </div>
     </div>`).join('');
+}
+
+// Builds homework answer block — locked until teacher releases via Firestore
+function buildHomeworkAnswerHtml(id) {
+  if (!isAnswerReleased(id)) {
+    return `<div class="hw-answer-wrapper locked">
+      <div class="hw-answer-header">📋 本週作業解答</div>
+      <div class="answer-locked">🔒 解答尚未開放 — 老師批改作業後將於每週五線上討論時公布</div>
+    </div>`;
+  }
+  const ans = (typeof BSD56HomeworkAnswers !== 'undefined') ? BSD56HomeworkAnswers[id] : null;
+  if (!ans) return '';
+
+  const sectionsHtml = ans.sections.map(s => {
+    let contentHtml = '';
+    if (s.type === 'text') {
+      contentHtml = `<p class="hw-answer-text">${s.content}</p>`;
+    } else if (s.type === 'mermaid') {
+      contentHtml = `<div class="mermaid">${s.content}</div>`;
+    } else if (s.type === 'code') {
+      contentHtml = `<div class="code-block">
+        <div class="code-header">
+          <span class="lang">${s.lang || ''}</span>
+          <span style="flex:1;margin:0 .5rem;">${s.title || ''}</span>
+        </div>
+        <pre><code class="hlcode" data-lang="${(s.lang||'').toLowerCase()}">${escHtml(s.content)}</code></pre>
+      </div>`;
+    }
+    return `<div class="hw-answer-section">
+      ${s.title && s.type !== 'code' ? `<div class="hw-answer-title">${s.title}</div>` : ''}
+      ${contentHtml}
+    </div>`;
+  }).join('');
+
+  return `<div class="hw-answer-wrapper">
+    <div class="hw-answer-header">
+      <span>📋 本週作業解答</span>
+      <span class="answer-released-badge" style="font-size:.75rem;">💡 已開放</span>
+    </div>
+    <div class="hw-answer-body">
+      ${ans.summary ? `<p class="hw-answer-summary">${ans.summary}</p>` : ''}
+      ${sectionsHtml}
+    </div>
+  </div>`;
+}
+
+// Render Mermaid diagrams inside a container
+function renderMermaid(root) {
+  if (typeof mermaid === 'undefined') return;
+  const nodes = Array.from(root.querySelectorAll('.mermaid:not([data-processed])'));
+  if (nodes.length) mermaid.run({ nodes });
 }
 
 function expandAllAnswers() {
@@ -268,13 +315,20 @@ function collapseAllAnswers() {
   tab.querySelectorAll('.btn-show-answer').forEach(b => b.textContent = '💡 顯示解答');
 }
 
-// Refreshes only the exercises tab when answer release status changes while modal is open
-function refreshExercisesTab() {
+// Refreshes the homework tab answer block when Firestore answer status changes
+function refreshHomeworkTab() {
   if (!_currentWeekId) return;
-  const tabEl = document.getElementById('tab-exercises');
+  const tabEl = document.getElementById('tab-homework');
   if (!tabEl) return;
-  tabEl.innerHTML = buildExercisesHtml(_currentWeekId);
+  const existing = tabEl.querySelector('.hw-answer-wrapper');
+  const newHtml = buildHomeworkAnswerHtml(_currentWeekId);
+  if (existing) {
+    existing.outerHTML = newHtml;
+  } else {
+    tabEl.insertAdjacentHTML('beforeend', newHtml);
+  }
   applyHighlighting(tabEl);
+  renderMermaid(tabEl);
 }
 
 function openWeekDetail(id) {
@@ -334,7 +388,8 @@ function openWeekDetail(id) {
       </button>
       <a href="https://github.com/thstsai/BSD56/issues/new?title=${issueTitle}&body=${issueBody}"
          target="_blank" class="btn btn-accent">📤 繳交作業（GitHub Issues）</a>
-    </div>`;
+    </div>
+    ${buildHomeworkAnswerHtml(id)}`;
 
   // Prev / Next navigation
   const hasPrev = id > 1, hasNext = id < BSD56Data.weeks.length;
@@ -365,6 +420,7 @@ function openWeekDetail(id) {
 
   switchTab(modal.querySelector('.detail-tab[data-tab="tab-objectives"]'));
   applyHighlighting(modal);
+  renderMermaid(modal);
 
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';

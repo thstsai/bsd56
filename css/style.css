@@ -882,6 +882,73 @@ body {
 .week-nav .btn:hover:not(:disabled) { background: rgba(255,255,255,.3); }
 .week-nav .btn:disabled { opacity: .35; cursor: not-allowed; }
 
+/* ---- Homework Answer Block ---- */
+.hw-answer-wrapper {
+  margin-top: 1.5rem;
+  border: 2px solid var(--primary-light);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.hw-answer-wrapper.locked {
+  border-color: var(--border);
+}
+.hw-answer-wrapper.locked .hw-answer-header {
+  background: #f8f9fa;
+  color: var(--text-muted);
+}
+.hw-answer-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: #fff;
+  padding: .65rem 1rem;
+  font-weight: 700;
+  font-size: .9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.hw-answer-body {
+  padding: 1rem;
+  background: #fff;
+}
+.hw-answer-summary {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  font-size: .875rem;
+  background: #f0f4ff;
+  border-left: 3px solid var(--primary-light);
+  padding: .5rem .75rem;
+  border-radius: 0 6px 6px 0;
+}
+.hw-answer-section {
+  margin-bottom: 1.25rem;
+}
+.hw-answer-section:last-child { margin-bottom: 0; }
+.hw-answer-title {
+  font-weight: 700;
+  font-size: .85rem;
+  color: var(--primary);
+  margin-bottom: .5rem;
+  padding-bottom: .3rem;
+  border-bottom: 1px solid var(--border);
+}
+.hw-answer-text {
+  margin: 0;
+  font-size: .875rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+.hw-answer-body .mermaid {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  text-align: center;
+}
+.hw-answer-body .code-block {
+  margin-bottom: 0;
+}
+
 /* ---- Print ---- */
 @media print {
   .site-navbar, .week-detail { display: none !important; }
