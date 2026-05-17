@@ -68,7 +68,7 @@ const BSD56Data = {
       title: "需求分析與使用案例圖",
       desc: "解讀競賽試題，識別系統Actor與Use Case，繪製標準UML圖",
       diff: 2, hours: 4,
-      answersReleased: false,
+      answersReleased: true,
       objectives: [
         "能從試題文件中識別所有系統使用者(Actor)",
         "能識別至少15個有意義的使用案例(Use Case)",
