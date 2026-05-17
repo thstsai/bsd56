@@ -2,6 +2,7 @@
 
 // ── Firebase Sync ─────────────────────────────────────────
 let _db = null;
+let _answersReleased = {}; // populated from Firestore settings/answers
 
 function initFirebase() {
   if (typeof FIREBASE_CONFIG === 'undefined') return;
@@ -10,6 +11,24 @@ function initFirebase() {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     _db = firebase.firestore();
   } catch(e) { /* continue without cloud sync */ }
+}
+
+// Real-time listener for answer release config; falls back to data.js flags
+function loadAnswerConfig() {
+  if (!_db) return;
+  _db.collection('settings').doc('answers').onSnapshot(snap => {
+    _answersReleased = snap.exists ? snap.data() : {};
+    renderCurriculum();
+    renderHome();
+  }, () => {});
+}
+
+function isAnswerReleased(weekId) {
+  if (Object.keys(_answersReleased).length > 0) {
+    return _answersReleased[`week${weekId}`] === true;
+  }
+  // Fallback: use static flag in data.js
+  return BSD56Data.weeks.find(w => w.id === weekId)?.answersReleased === true;
 }
 
 function getStudentId() {
@@ -168,7 +187,7 @@ function renderCurriculum() {
     const done = prog[w.id];
     const stars = Array.from({length:5},(_,i)=>
       `<span class="${i<w.diff?'star-filled':'star-empty'}">★</span>`).join('');
-    const answerBadge = w.answersReleased
+    const answerBadge = isAnswerReleased(w.id)
       ? `<span class="answer-released-badge">💡 解答已開放</span>` : '';
     return `
       <div class="week-card ${modCls[w.mod]} ${done?'completed':''}"
@@ -205,7 +224,7 @@ function openWeekDetail(id) {
     <ul class="topics-list">${week.topics.map(t=>`<li>▸ ${t}</li>`).join('')}</ul>`;
 
   // Exercises tab
-  const answerBlock = week.answersReleased
+  const answerBlock = isAnswerReleased(id)
     ? (q) => `
           <div class="answer-toggle">
             <button class="btn-show-answer" onclick="toggleAnswer(this)">💡 顯示解答</button>
@@ -520,7 +539,7 @@ function renderHome() {
 
   el.innerHTML = upcoming.length
     ? upcoming.map(w => {
-        const answerBadge = w.answersReleased
+        const answerBadge = isAnswerReleased(w.id)
           ? `<span class="answer-released-badge">💡 解答已開放</span>` : '';
         return `
         <div class="week-card ${modCls[w.mod]}" style="cursor:pointer;"
@@ -568,6 +587,7 @@ function escHtml(str) {
 // ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initFirebase();
+  loadAnswerConfig();
   initStudentName();
   updateProgressBadge();
   renderScoring();

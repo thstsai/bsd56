@@ -78,6 +78,71 @@
     .th-sw  { background: #e3f2fd !important; color: #0d47a1 !important; }
     .th-app { background: #e8f5e9 !important; color: #1b5e20 !important; }
     .th-all { background: #fff3e0 !important; color: #e65100 !important; }
+
+    /* ── Answer Management ── */
+    .answer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: .75rem;
+      padding: 1rem 1.25rem 1.25rem;
+    }
+    .answer-week-card {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 10px;
+      padding: .9rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+    }
+    .answer-week-card .w-num {
+      font-weight: 700;
+      font-size: .9rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .answer-week-card .w-title {
+      font-size: .8rem;
+      color: #495057;
+      line-height: 1.4;
+      flex: 1;
+    }
+    .toggle-btn {
+      margin-top: .25rem;
+      width: 100%;
+      padding: .5rem;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 600;
+      transition: all .15s;
+    }
+    .toggle-btn.released {
+      background: #d4edda;
+      color: #155724;
+      border-color: #c3e6cb;
+    }
+    .toggle-btn.released:hover { background: #c3e6cb; }
+    .toggle-btn.locked {
+      background: #f8d7da;
+      color: #721c24;
+      border-color: #f5c6cb;
+    }
+    .toggle-btn.locked:hover { background: #f5c6cb; }
+    .btn-batch {
+      padding: .38rem .8rem;
+      border: 1px solid;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .8rem;
+      font-weight: 600;
+      transition: opacity .15s;
+    }
+    .btn-batch:hover { opacity: .8; }
+    .btn-batch-open  { background:#d4edda; color:#155724; border-color:#c3e6cb; }
+    .btn-batch-close { background:#f8d7da; color:#721c24; border-color:#f5c6cb; }
   </style>
 </head>
 <body>
@@ -154,6 +219,19 @@
       </div>
     </div>
 
+    <!-- Answer Management Card -->
+    <div class="table-card" style="margin-top:1.5rem;">
+      <div class="table-header">
+        <span class="table-title">🔓 每週解答開放管理</span>
+        <span style="font-size:.8rem;color:#adb5bd;flex:1;">點擊切換即時更新，選手重新整理後生效</span>
+        <button class="btn-batch btn-batch-open"  onclick="setAllAnswers(true)">全部開放</button>
+        <button class="btn-batch btn-batch-close" onclick="setAllAnswers(false)" style="margin-left:.4rem;">全部關閉</button>
+      </div>
+      <div class="answer-grid" id="answer-grid">
+        <div class="no-data" style="grid-column:1/-1;">載入中...</div>
+      </div>
+    </div>
+
   </div><!-- /dashboard -->
 </div><!-- /dashboard wrapper -->
 
@@ -161,6 +239,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js"></script>
+<script src="js/data.js"></script>
 <script>
 
 // ── Gate ─────────────────────────────────────────────────
@@ -198,6 +277,7 @@ function initDashboard() {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
     loadStudents();
+    loadAnswerConfig();
   } catch(e) {
     document.getElementById('firebase-error-box').style.display = '';
   }
@@ -273,6 +353,78 @@ function updateStats(students) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Answer Management ─────────────────────────────────────
+let answersConfig = {};
+
+const MOD_COLORS = { db:'#8e44ad', sw:'#2980b9', app:'#27ae60', all:'#e67e22' };
+
+async function loadAnswerConfig() {
+  if (!db) return;
+  try {
+    const snap = await db.collection('settings').doc('answers').get();
+    answersConfig = snap.exists ? snap.data() : {};
+    renderAnswerGrid();
+  } catch(e) {
+    document.getElementById('answer-grid').innerHTML =
+      `<div class="no-data" style="grid-column:1/-1;">讀取失敗：${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderAnswerGrid() {
+  const weeks = typeof BSD56Data !== 'undefined' ? BSD56Data.weeks : [];
+  const html = Array.from({length: 12}, (_, i) => {
+    const n = i + 1;
+    const w = weeks[i] || {};
+    const released = answersConfig[`week${n}`] === true;
+    const color = MOD_COLORS[w.mod || 'db'];
+    return `
+      <div class="answer-week-card" id="awc-${n}">
+        <div class="w-num">
+          <span>W${n}</span>
+          <span style="font-size:.72rem;color:#fff;background:${color};border-radius:5px;padding:.1rem .4rem;">${escHtml(w.modName||'')}</span>
+        </div>
+        <div class="w-title">${escHtml(w.title || '第 ' + n + ' 週')}</div>
+        <button class="toggle-btn ${released ? 'released' : 'locked'}"
+                onclick="toggleAnswerWeek(${n})">
+          ${released ? '🔓 解答已開放' : '🔒 解答未開放'}
+        </button>
+      </div>`;
+  }).join('');
+  document.getElementById('answer-grid').innerHTML = html;
+}
+
+async function toggleAnswerWeek(n) {
+  const key = `week${n}`;
+  const newVal = !(answersConfig[key] === true);
+  answersConfig[key] = newVal;
+  // Optimistic UI update
+  const btn = document.querySelector(`#awc-${n} .toggle-btn`);
+  if (btn) {
+    btn.className = `toggle-btn ${newVal ? 'released' : 'locked'}`;
+    btn.textContent = newVal ? '🔓 解答已開放' : '🔒 解答未開放';
+  }
+  try {
+    await db.collection('settings').doc('answers').set({ [key]: newVal }, { merge: true });
+  } catch(e) {
+    answersConfig[key] = !newVal; // revert
+    renderAnswerGrid();
+    alert('更新失敗：' + e.message);
+  }
+}
+
+async function setAllAnswers(val) {
+  const updates = {};
+  for (let n = 1; n <= 12; n++) updates[`week${n}`] = val;
+  Object.assign(answersConfig, updates);
+  renderAnswerGrid();
+  try {
+    await db.collection('settings').doc('answers').set(updates, { merge: true });
+  } catch(e) {
+    alert('更新失敗：' + e.message);
+    loadAnswerConfig(); // reload to restore correct state
+  }
 }
 
 </script>
