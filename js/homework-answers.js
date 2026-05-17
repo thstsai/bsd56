@@ -123,23 +123,24 @@ const BSD56HomeworkAnswers = {
 
   // ── Week 3：T-SQL 語法與測試資料建立 ─────────────────────
   3: {
-    summary: '建立 LinkOne 資料庫結構與基本測試資料，包含 CREATE TABLE、BULK INSERT 及 Stored Procedure。',
+    summary: '建立 LinkOne 完整資料庫：CREATE TABLE 含完整約束、ROW_NUMBER() 批次產生 100 筆測試資料、3 個 Stored Procedure，以及 2 個 SQL View 封裝常用查詢。',
     sections: [
       {
         type: 'code',
         lang: 'SQL',
-        title: 'CREATE TABLE 範本（Employee + Post）',
-        content: `-- 建立 Employee 資料表
+        title: 'CREATE TABLE — Employee + Post（含所有約束）',
+        content: `-- Employee 資料表
 CREATE TABLE Employee (
     EmployeeID   INT           IDENTITY(1,1) PRIMARY KEY,
     Name         NVARCHAR(50)  NOT NULL,
     Email        NVARCHAR(100) NOT NULL UNIQUE,
     PasswordHash NVARCHAR(256) NOT NULL,
+    Role         NVARCHAR(20)  NOT NULL DEFAULT N'Staff',  -- Admin / Staff
     CreatedAt    DATETIME2     NOT NULL DEFAULT GETDATE(),
     IsActive     BIT           NOT NULL DEFAULT 1
 );
 
--- 建立 Post 資料表
+-- Post 資料表（自我參照：ApprovedByID 指向 Employee）
 CREATE TABLE Post (
     PostID       INT           IDENTITY(1,1) PRIMARY KEY,
     EmployeeID   INT           NOT NULL REFERENCES Employee(EmployeeID),
@@ -152,38 +153,116 @@ CREATE TABLE Post (
       {
         type: 'code',
         lang: 'SQL',
-        title: 'BULK INSERT 測試資料',
-        content: `-- 從 CSV 匯入 Employee 資料
-BULK INSERT Employee
-FROM 'C:\\Data\\employees.csv'
-WITH (
-    FIELDTERMINATOR = ',',
-    ROWTERMINATOR   = '\\n',
-    FIRSTROW        = 2,       -- 跳過標題行
-    CODEPAGE        = '65001'  -- UTF-8
-);`
+        title: 'ROW_NUMBER() 批次產生 100 筆測試資料',
+        content: `-- 批次產生 100 筆 Employee 測試資料（ROW_NUMBER 產生序號）
+INSERT INTO Employee (Name, Email, PasswordHash, Role, IsActive)
+SELECT
+    N'員工' + RIGHT('000' + CAST(n AS VARCHAR), 3),
+    'emp' + CAST(n AS VARCHAR) + '@linkone.com',
+    -- SHA256('password') 的固定值（測試用）
+    'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
+    CASE (n % 5) WHEN 0 THEN N'Admin' ELSE N'Staff' END,
+    1
+FROM (
+    SELECT TOP 100 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n
+    FROM sys.all_objects
+) t;
+
+-- 批次產生 200 筆 Post 測試資料
+INSERT INTO Post (EmployeeID, Content, CreatedAt, IsApproved)
+SELECT
+    (ABS(CHECKSUM(NEWID())) % 100) + 1,   -- 隨機 EmployeeID 1~100
+    N'測試貼文內容 #' + CAST(n AS VARCHAR) + N'，分享今天的工作心得。',
+    DATEADD(DAY, -(ABS(CHECKSUM(NEWID())) % 90), GETDATE()),  -- 最近90天
+    CASE (n % 3) WHEN 0 THEN 0 ELSE 1 END  -- 1/3 未審核
+FROM (
+    SELECT TOP 200 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n
+    FROM sys.all_objects
+) t;`
       },
       {
         type: 'code',
         lang: 'SQL',
-        title: 'Stored Procedure：取得員工貼文清單',
-        content: `CREATE PROCEDURE sp_GetEmployeePosts
+        title: 'Stored Procedure — 查詢 / 新增 / 更新各1個',
+        content: `-- SP 1：查詢員工貼文清單（含留言數）
+CREATE PROCEDURE sp_GetEmployeePosts
     @EmployeeID INT
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT
-        p.PostID,
-        p.Content,
-        p.CreatedAt,
-        p.IsApproved,
-        COUNT(c.CommentID) AS CommentCount
+    SELECT p.PostID, p.Content, p.CreatedAt, p.IsApproved,
+           COUNT(c.CommentID) AS CommentCount
     FROM Post p
     LEFT JOIN Comment c ON c.PostID = p.PostID
     WHERE p.EmployeeID = @EmployeeID
     GROUP BY p.PostID, p.Content, p.CreatedAt, p.IsApproved
     ORDER BY p.CreatedAt DESC;
+END;
+
+-- SP 2：新增貼文
+CREATE PROCEDURE sp_AddPost
+    @EmployeeID INT,
+    @Content    NVARCHAR(500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO Post (EmployeeID, Content, CreatedAt, IsApproved)
+    VALUES (@EmployeeID, @Content, GETDATE(), 0);
+    SELECT SCOPE_IDENTITY() AS NewPostID;
+END;
+
+-- SP 3：審核通過貼文（更新）
+CREATE PROCEDURE sp_ApprovePost
+    @PostID     INT,
+    @ApproverID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE Post
+    SET IsApproved   = 1,
+        ApprovedByID = @ApproverID
+    WHERE PostID = @PostID;
 END;`
+      },
+      {
+        type: 'code',
+        lang: 'SQL',
+        title: 'SQL View — 封裝常用查詢供 C# / Android 直接使用',
+        content: `-- View 1：員工貼文統計（C# 報表頁直接 SELECT）
+CREATE VIEW vw_EmployeePostSummary AS
+SELECT
+    e.EmployeeID,
+    e.Name,
+    e.Email,
+    e.Role,
+    COUNT(p.PostID)                                     AS TotalPosts,
+    SUM(CASE WHEN p.IsApproved = 1 THEN 1 ELSE 0 END)  AS ApprovedPosts,
+    MAX(p.CreatedAt)                                    AS LastPostTime
+FROM Employee e
+LEFT JOIN Post p ON p.EmployeeID = e.EmployeeID
+WHERE e.IsActive = 1
+GROUP BY e.EmployeeID, e.Name, e.Email, e.Role;
+
+-- View 2：待審核貼文清單（管理員審核頁使用）
+CREATE VIEW vw_PendingPosts AS
+SELECT
+    p.PostID,
+    p.Content,
+    p.CreatedAt,
+    e.Name    AS AuthorName,
+    e.Email   AS AuthorEmail
+FROM Post p
+INNER JOIN Employee e ON e.EmployeeID = p.EmployeeID
+WHERE p.IsApproved = 0
+ORDER BY p.CreatedAt DESC;  -- (加 WITH SCHEMABINDING 可建 Index)
+
+-- === 使用方式 ===
+-- C# EF：在 ZChargeContext 加入 Keyless Entity 後直接 LINQ 查詢
+-- AppDb.Context.EmployeePostSummaries.ToList()
+--
+-- SQL 直接查詢：
+-- SELECT * FROM vw_EmployeePostSummary WHERE Role = 'Admin'
+-- SELECT * FROM vw_PendingPosts`
       }
     ]
   },
@@ -198,7 +277,7 @@ END;`
         content: `flowchart TD
   Login["FrmLogin\\n登入表單"]
   Main["FrmMain\\n主表單（TabControl）"]
-  Base["BaseDetailForm<T>\\n抽象基底表單"]
+  Base["BaseDetailForm&lt;T&gt;\\n抽象基底表單"]
   Employee["FrmEmployee\\n員工管理\\n繼承 BaseDetailForm"]
   Station["FrmStation\\n充電站管理\\n繼承 BaseDetailForm"]
   Sticker["FrmSticker\\n貼圖管理\\n繼承 BaseDetailForm"]
@@ -686,7 +765,7 @@ fun LinkOneApp() {
   HTTP -->|"GET /api/posts"| Server
   Server -->|"JSON Array"| HTTP
   HTTP --> JSON
-  JSON -->|"List<Post>"| ApiClient
+  JSON -->|"List&lt;Post&gt;"| ApiClient
   ApiClient -->|Result.Success| Compose
 
   style Server fill:#e67e22,color:#fff

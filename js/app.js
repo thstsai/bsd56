@@ -516,13 +516,13 @@ function applyHighlighting(root) {
     const placeholders = [];
     rules.forEach(([re, cls]) => {
       html = html.replace(re, m => {
-        const ph = `\x00${placeholders.length}\x00`;
+        const ph = `\x00_${placeholders.length}_\x00`;
         placeholders.push(`<span class="${cls}">${m}</span>`);
         return ph;
       });
     });
     // Restore placeholders
-    html = html.replace(/\x00(\d+)\x00/g, (_, i) => placeholders[+i]);
+    html = html.replace(/\x00_(\d+)_\x00/g, (_, i) => placeholders[+i]);
     el.innerHTML = html;
   });
 }
