@@ -22,6 +22,7 @@
     <li><a href="#" data-section="curriculum">📅 培訓課程</a></li>
     <li><a href="#" data-section="progress">✅ 進度追蹤</a></li>
     <li><a href="#" data-section="upload">📤 作業繳交</a></li>
+    <li><a href="#" data-section="resources">📁 競賽資源</a></li>
   </ul>
   <div class="nav-spacer"></div>
   <div class="progress-badge" id="progress-badge">進度 0/12</div>
@@ -255,11 +256,12 @@
 <div class="week-detail" id="week-modal">
   <div class="week-detail-inner">
     <div class="week-detail-header mod-db">
-      <div>
+      <div style="flex:1;">
         <div class="week-detail-title"></div>
         <div class="week-detail-sub"></div>
       </div>
-      <button class="btn-close-detail" onclick="closeWeekDetail()">✕ 關閉</button>
+      <div class="week-nav-wrapper"></div>
+      <button class="btn-close-detail" onclick="closeWeekDetail()">✕</button>
     </div>
     <div class="week-detail-body">
       <div class="detail-tabs">
@@ -276,6 +278,13 @@
       <div class="tab-content" id="tab-homework"></div>
     </div>
   </div>
+</div>
+
+<!-- ── Resources Section ──────────────────────────────── -->
+<div class="section" id="section-resources">
+  <h1 class="section-title">📁 競賽資源下載</h1>
+  <p class="section-subtitle">55分區、55全國、56分區 試題文件、資料檔案及開發工具連結</p>
+  <div id="resources-container"></div>
 </div>
 
 <!-- ── Footer ─────────────────────────────────────────── -->

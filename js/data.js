@@ -1092,7 +1092,7 @@ class StationAdapter(
         fun bind(station: ChargingStation) {
             binding.tvStationName.text  = station.name
             binding.tvAddress.text      = station.address
-            binding.tvAvailability.text = "${station.available}/${station.total} 可用"
+            binding.tvAvailability.text = "\${station.available}/\${station.total} 可用"
             binding.tvAvailability.setTextColor(
                 if (station.available > 0) Color.parseColor("#27AE60")
                 else Color.parseColor("#E74C3C")
@@ -1826,7 +1826,7 @@ private void btnRequestRefund_Click(object sender, EventArgs e)
     }
 
     var confirm = MessageBox.Show(
-        $"確定退款「{packName}」？\n金額：${price:F2}\n購買日：{purchasedAt:yyyy/MM/dd}",
+        $"確定退款「{packName}」？\n金額：{price:F2}\n購買日：{purchasedAt:yyyy/MM/dd}",
         "確認退款", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
     if (confirm != DialogResult.Yes) return;
 
