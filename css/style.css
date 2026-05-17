@@ -794,6 +794,20 @@ body {
 .teacher-meeting-label { font-size: .75rem; opacity: .75; margin-bottom: .2rem; }
 .teacher-meeting-time { font-weight: 700; font-size: 1.05rem; }
 .teacher-meeting-sub { font-size: .8rem; opacity: .8; margin-top: .2rem; }
+.teacher-admin-link {
+  align-self: center;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.35);
+  color: #fff;
+  text-decoration: none;
+  padding: .45rem .9rem;
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.teacher-admin-link:hover { background: rgba(255,255,255,.28); }
 
 /* ---- Locked Answer ---- */
 .answer-locked {

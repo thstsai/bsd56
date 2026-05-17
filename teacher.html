@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BSD56 老師後台管理</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏫</text></svg>">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', system-ui, sans-serif; background: #f0f2f5; color: #2c3e50; min-height: 100vh; }
+
+    /* ── Gate ── */
+    .gate { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #1a3a6c 0%, #2456a4 100%); }
+    .gate-box { background: #fff; border-radius: 16px; padding: 2.5rem 2rem; width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .gate-logo { font-size: 3.5rem; margin-bottom: .75rem; }
+    .gate-title { font-size: 1.25rem; font-weight: 700; color: #1a3a6c; margin-bottom: .3rem; }
+    .gate-sub { color: #6c757d; font-size: .85rem; margin-bottom: 1.75rem; }
+    .gate input { width: 100%; padding: .7rem 1rem; border: 1px solid #dee2e6; border-radius: 8px; font-size: 1rem; margin-bottom: .75rem; outline: none; transition: border-color .15s; }
+    .gate input:focus { border-color: #2456a4; }
+    .gate-btn { width: 100%; padding: .75rem; background: #1a3a6c; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600; transition: background .15s; }
+    .gate-btn:hover { background: #2456a4; }
+    .gate-error { color: #e74c3c; font-size: .85rem; margin-top: .75rem; }
+    .gate-note { color: #adb5bd; font-size: .75rem; margin-top: 1.25rem; }
+
+    /* ── Navbar ── */
+    .navbar { background: #1a3a6c; color: #fff; padding: .8rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .navbar-brand { font-weight: 700; font-size: 1.05rem; }
+    .navbar-sub { flex: 1; font-size: .82rem; opacity: .7; }
+    .navbar a { color: #90caf9; text-decoration: none; font-size: .85rem; }
+    .navbar a:hover { text-decoration: underline; }
+
+    /* ── Dashboard layout ── */
+    .dashboard { max-width: 1280px; margin: 1.5rem auto; padding: 0 1rem; }
+
+    /* ── Alert ── */
+    .alert { padding: .9rem 1.1rem; border-radius: 8px; font-size: .875rem; margin-bottom: 1rem; }
+    .alert-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+    .alert-warning code { background: rgba(0,0,0,.07); padding: .1em .35em; border-radius: 4px; }
+    .alert-warning a { color: #856404; font-weight: 600; }
+
+    /* ── Stats row ── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: #fff; border-radius: 10px; padding: 1.25rem 1rem; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .stat-num { font-size: 2rem; font-weight: 700; color: #1a3a6c; }
+    .stat-label { font-size: .78rem; color: #6c757d; margin-top: .25rem; }
+
+    /* ── Table card ── */
+    .table-card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 1.5rem; }
+    .table-header { padding: .9rem 1.25rem; border-bottom: 1px solid #dee2e6; display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .table-title { font-weight: 700; font-size: .95rem; flex: 1; }
+    .updated-at { font-size: .75rem; color: #adb5bd; }
+    .btn-refresh { padding: .4rem .85rem; background: #1a3a6c; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: .82rem; transition: background .15s; }
+    .btn-refresh:hover { background: #2456a4; }
+    .btn-issues { padding: .4rem .85rem; background: #fff; color: #1a3a6c; border: 1px solid #1a3a6c; border-radius: 6px; cursor: pointer; font-size: .82rem; text-decoration: none; }
+
+    /* ── Student table ── */
+    .table-wrap { overflow-x: auto; }
+    .student-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .student-table th { background: #f8f9fa; padding: .6rem .45rem; font-weight: 600; text-align: center; border-bottom: 2px solid #dee2e6; white-space: nowrap; color: #495057; }
+    .student-table th:first-child { text-align: left; padding-left: 1.25rem; min-width: 100px; }
+    .student-table td { padding: .55rem .45rem; border-bottom: 1px solid #f0f2f5; text-align: center; }
+    .student-table td:first-child { text-align: left; padding-left: 1.25rem; font-weight: 500; }
+    .student-table tr:last-child td { border-bottom: none; }
+    .student-table tbody tr:hover td { background: #f8f9fa; }
+
+    .week-done { color: #27ae60; }
+    .week-todo { color: #dee2e6; }
+
+    .pct-pill { display: inline-block; padding: .2rem .55rem; border-radius: 12px; font-weight: 600; font-size: .76rem; min-width: 44px; }
+    .pct-high { background: #d4edda; color: #155724; }
+    .pct-mid  { background: #fff3cd; color: #856404; }
+    .pct-low  { background: #f8d7da; color: #721c24; }
+
+    .no-data { text-align: center; padding: 3rem; color: #adb5bd; font-size: .9rem; }
+
+    /* ── Module column headers ── */
+    .th-db  { background: #f3e5f5 !important; color: #6a1b9a !important; }
+    .th-sw  { background: #e3f2fd !important; color: #0d47a1 !important; }
+    .th-app { background: #e8f5e9 !important; color: #1b5e20 !important; }
+    .th-all { background: #fff3e0 !important; color: #e65100 !important; }
+  </style>
+</head>
+<body>
+
+<!-- ── Password Gate ───────────────────────────────────── -->
+<div id="gate" class="gate">
+  <div class="gate-box">
+    <div class="gate-logo">🏫</div>
+    <div class="gate-title">BSD56 老師後台</div>
+    <div class="gate-sub">第56屆全國技能競賽 商務軟體設計</div>
+    <input type="password" id="pwd-input" placeholder="請輸入老師密碼" autofocus>
+    <button class="gate-btn" onclick="login()">登入後台</button>
+    <div class="gate-error" id="pwd-error" style="display:none;">密碼錯誤，請再試一次</div>
+    <div class="gate-note">密碼設定於 js/firebase-config.js → ADMIN_PASSWORD</div>
+  </div>
+</div>
+
+<!-- ── Dashboard ───────────────────────────────────────── -->
+<div id="dashboard" style="display:none;">
+  <nav class="navbar">
+    <span class="navbar-brand">🏫 BSD56 老師後台</span>
+    <span class="navbar-sub">選手學習進度管理</span>
+    <a href="index.html">← 返回學生網站</a>
+  </nav>
+
+  <div class="dashboard">
+
+    <!-- Firebase not configured warning -->
+    <div id="firebase-error-box" style="display:none;" class="alert alert-warning">
+      ⚠ <strong>Firebase 尚未設定。</strong> 請先至
+      <a href="https://console.firebase.google.com/" target="_blank">Firebase Console</a>
+      建立專案，再將設定填入 <code>js/firebase-config.js</code> 並推送至 GitHub。
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="stat-count">-</div><div class="stat-label">選手人數</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-avg">-</div><div class="stat-label">平均完成率</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-full">-</div><div class="stat-label">全部完成（12週）</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-none">-</div><div class="stat-label">尚未開始</div></div>
+    </div>
+
+    <!-- Student progress table -->
+    <div class="table-card">
+      <div class="table-header">
+        <span class="table-title">📋 選手週次進度一覽</span>
+        <span class="updated-at" id="update-time"></span>
+        <a href="https://github.com/thstsai/BSD56/issues" target="_blank" class="btn-issues">📋 查看作業繳交</a>
+        <button class="btn-refresh" onclick="loadStudents()">🔄 重新整理</button>
+      </div>
+      <div class="table-wrap">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th rowspan="2" style="vertical-align:middle;">學員姓名</th>
+              <th colspan="3" class="th-db">SA&amp;DB 模組</th>
+              <th colspan="3" class="th-sw">C# 軟體模組</th>
+              <th colspan="2" class="th-app">Android 模組</th>
+              <th colspan="4" class="th-all">整合 / 全國賽</th>
+              <th rowspan="2" style="vertical-align:middle;">完成率</th>
+              <th rowspan="2" style="vertical-align:middle;">最近更新</th>
+            </tr>
+            <tr>
+              <th class="th-db">W1</th><th class="th-db">W2</th><th class="th-db">W3</th>
+              <th class="th-sw">W4</th><th class="th-sw">W5</th><th class="th-sw">W6</th>
+              <th class="th-app">W7</th><th class="th-app">W8</th>
+              <th class="th-all">W9</th><th class="th-all">W10</th><th class="th-all">W11</th><th class="th-all">W12</th>
+            </tr>
+          </thead>
+          <tbody id="student-tbody">
+            <tr><td colspan="15" class="no-data">載入中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</div><!-- /dashboard wrapper -->
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script>
+
+// ── Gate ─────────────────────────────────────────────────
+document.getElementById('pwd-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') login();
+});
+
+function login() {
+  const pwd = document.getElementById('pwd-input').value;
+  if (typeof ADMIN_PASSWORD !== 'undefined' && pwd === ADMIN_PASSWORD) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('dashboard').style.display = '';
+    initDashboard();
+  } else {
+    document.getElementById('pwd-error').style.display = '';
+    document.getElementById('pwd-input').select();
+  }
+}
+
+// ── Firebase ──────────────────────────────────────────────
+let db = null;
+
+function initDashboard() {
+  const unconfigured = typeof FIREBASE_CONFIG === 'undefined'
+    || FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY';
+
+  if (unconfigured) {
+    document.getElementById('firebase-error-box').style.display = '';
+    document.getElementById('student-tbody').innerHTML =
+      '<tr><td colspan="15" class="no-data">Firebase 未設定，無法讀取選手資料</td></tr>';
+    updateStats([]);
+    return;
+  }
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    loadStudents();
+  } catch(e) {
+    document.getElementById('firebase-error-box').style.display = '';
+  }
+}
+
+async function loadStudents() {
+  if (!db) return;
+  document.getElementById('student-tbody').innerHTML =
+    '<tr><td colspan="15" class="no-data">載入中...</td></tr>';
+  try {
+    const snap = await db.collection('students').orderBy('lastUpdated', 'desc').get();
+    const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTable(students);
+    document.getElementById('update-time').textContent =
+      '更新：' + new Date().toLocaleTimeString('zh-TW');
+  } catch(e) {
+    document.getElementById('student-tbody').innerHTML =
+      `<tr><td colspan="15" class="no-data">讀取失敗：${escHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderTable(students) {
+  updateStats(students);
+  if (!students.length) {
+    document.getElementById('student-tbody').innerHTML =
+      '<tr><td colspan="15" class="no-data">目前沒有選手資料。選手在學生網站標記週次完成後，資料將自動出現。</td></tr>';
+    return;
+  }
+
+  const weeks = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const rows = students.map(s => {
+    const prog = s.progress || {};
+    const done = weeks.filter(n => prog[n] || prog[String(n)]).length;
+    const pct = Math.round(done / 12 * 100);
+    const pctCls = pct >= 75 ? 'pct-high' : pct >= 34 ? 'pct-mid' : 'pct-low';
+    const updAt = s.lastUpdated?.toDate?.()
+      ? s.lastUpdated.toDate().toLocaleDateString('zh-TW', { month:'2-digit', day:'2-digit' })
+      : '-';
+    const cells = weeks.map(n =>
+      `<td>${(prog[n] || prog[String(n)])
+        ? '<span class="week-done">✅</span>'
+        : '<span class="week-todo">○</span>'}</td>`
+    ).join('');
+
+    return `<tr>
+      <td>${escHtml(s.name || '(未設定)')}</td>
+      ${cells}
+      <td><span class="pct-pill ${pctCls}">${pct}%</span></td>
+      <td style="font-size:.75rem;color:#adb5bd;white-space:nowrap;">${updAt}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('student-tbody').innerHTML = rows;
+}
+
+function updateStats(students) {
+  const total = students.length;
+  document.getElementById('stat-count').textContent = total || '-';
+  if (!total) {
+    ['stat-avg','stat-full','stat-none'].forEach(id =>
+      document.getElementById(id).textContent = '-');
+    return;
+  }
+  const doneCounts = students.map(s => {
+    const prog = s.progress || {};
+    return [1,2,3,4,5,6,7,8,9,10,11,12].filter(n => prog[n] || prog[String(n)]).length;
+  });
+  const avg = Math.round(doneCounts.reduce((a,b)=>a+b,0) / total / 12 * 100);
+  document.getElementById('stat-avg').textContent = avg + '%';
+  document.getElementById('stat-full').textContent = doneCounts.filter(n=>n===12).length;
+  document.getElementById('stat-none').textContent = doneCounts.filter(n=>n===0).length;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+</script>
+</body>
+</html>

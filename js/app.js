@@ -1,5 +1,67 @@
 /* BSD56 App Logic */
 
+// ── Firebase Sync ─────────────────────────────────────────
+let _db = null;
+
+function initFirebase() {
+  if (typeof FIREBASE_CONFIG === 'undefined') return;
+  if (FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY') return;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    _db = firebase.firestore();
+  } catch(e) { /* continue without cloud sync */ }
+}
+
+function getStudentId() {
+  let id = localStorage.getItem('bsd56_student_id');
+  if (!id) {
+    id = 'stu_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('bsd56_student_id', id);
+  }
+  return id;
+}
+
+function getStudentName() {
+  return localStorage.getItem('bsd56_student_name') || '';
+}
+
+function syncToFirebase() {
+  if (!_db) return;
+  const name = getStudentName();
+  if (!name) return;
+  _db.collection('students').doc(getStudentId()).set({
+    name,
+    progress: getProgress(),
+    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }).catch(() => {});
+}
+
+// ── Student Name Modal ────────────────────────────────────
+function initStudentName() {
+  if (!getStudentName()) {
+    const modal = document.getElementById('name-modal');
+    if (modal) { modal.style.display = 'flex'; document.getElementById('name-input').focus(); }
+  } else {
+    prefillNameFields();
+  }
+}
+
+function submitStudentName() {
+  const input = document.getElementById('name-input');
+  const name = (input?.value || '').trim();
+  if (!name) { input?.focus(); return; }
+  localStorage.setItem('bsd56_student_name', name);
+  document.getElementById('name-modal').style.display = 'none';
+  prefillNameFields();
+  syncToFirebase();
+}
+
+function prefillNameFields() {
+  const name = getStudentName();
+  const el = document.getElementById('inp-name');
+  if (el && !el.value) el.value = name;
+}
+
 // ── Navigation ───────────────────────────────────────────
 const NAV_LINKS    = document.querySelectorAll('.nav-links a[data-section]');
 const SECTIONS     = document.querySelectorAll('.section');
@@ -36,6 +98,7 @@ function toggleWeekDone(id) {
   prog[id] = !prog[id];
   saveProgress(prog);
   updateProgressBadge();
+  syncToFirebase();
   // update the button inside an open modal
   const btn = document.getElementById('done-btn-' + id);
   if (btn) {
@@ -468,6 +531,7 @@ function renderHome() {
 function initUpload() {
   const form = document.getElementById('upload-form');
   if (!form) return;
+  prefillNameFields();
   form.addEventListener('submit', e => {
     e.preventDefault();
     const name = document.getElementById('inp-name').value.trim();
@@ -475,6 +539,11 @@ function initUpload() {
     const url  = document.getElementById('inp-url').value.trim();
     const note = document.getElementById('inp-note').value.trim();
     if (!name || !week) { alert('請填寫姓名和週次'); return; }
+    // Save name for future sessions and sync to Firebase
+    if (name !== getStudentName()) {
+      localStorage.setItem('bsd56_student_name', name);
+      syncToFirebase();
+    }
     const weekData = BSD56Data.weeks.find(w => w.week == week);
     const title = encodeURIComponent(`Week ${week} 作業繳交 [${name}]`);
     const body  = encodeURIComponent(
@@ -492,6 +561,8 @@ function escHtml(str) {
 
 // ── Init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  initFirebase();
+  initStudentName();
   updateProgressBadge();
   renderScoring();
   renderCurriculum();
