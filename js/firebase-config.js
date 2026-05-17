@@ -9,13 +9,13 @@
 // ────────────────────────────────────────────────
 
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+    apiKey: "AIzaSyDd89rqsPySTUZnA_Zv22bN4ulXqHnNaxk",
+    authDomain: "bsd56-33169.firebaseapp.com",
+    projectId: "bsd56-33169",
+    storageBucket: "bsd56-33169.firebasestorage.app",
+    messagingSenderId: "195816210081",
+    appId: "1:195816210081:web:678fc34609a45a33dafae0",
 };
 
 // 老師後台登入密碼（請自行修改，勿使用預設值）
-const ADMIN_PASSWORD = "BSD56teacher2025";
+const ADMIN_PASSWORD = "ths!1106";
