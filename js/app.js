@@ -286,11 +286,23 @@ function buildHomeworkAnswerHtml(id) {
   </div>`;
 }
 
-// Render Mermaid diagrams inside a container
-function renderMermaid(root) {
+// Render Mermaid diagrams inside a container using render() API for reliable async handling
+async function renderMermaid(root) {
   if (typeof mermaid === 'undefined') return;
   const nodes = Array.from(root.querySelectorAll('.mermaid:not([data-processed])'));
-  if (nodes.length) mermaid.run({ nodes });
+  for (const node of nodes) {
+    const code = node.textContent.trim();
+    if (!code) continue;
+    node.setAttribute('data-processed', 'true');
+    node.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:.8rem;">⏳ 圖形渲染中…</div>';
+    try {
+      const id = 'mermaid-' + Math.random().toString(36).slice(2, 10);
+      const { svg } = await mermaid.render(id, code);
+      node.innerHTML = svg;
+    } catch (e) {
+      node.innerHTML = '<p style="color:var(--text-muted);font-size:.8rem;padding:.5rem;">⚠ 圖形渲染失敗</p>';
+    }
+  }
 }
 
 function expandAllAnswers() {
