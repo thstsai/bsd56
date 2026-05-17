@@ -809,6 +809,21 @@ body {
 }
 .teacher-admin-link:hover { background: rgba(255,255,255,.28); }
 
+/* ---- Answer Released Badge (on week cards) ---- */
+.answer-released-badge {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  font-size: .68rem;
+  font-weight: 600;
+  padding: .1rem .4rem;
+  margin-left: .4rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 /* ---- Locked Answer ---- */
 .answer-locked {
   display: flex;

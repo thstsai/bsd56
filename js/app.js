@@ -168,11 +168,13 @@ function renderCurriculum() {
     const done = prog[w.id];
     const stars = Array.from({length:5},(_,i)=>
       `<span class="${i<w.diff?'star-filled':'star-empty'}">★</span>`).join('');
+    const answerBadge = w.answersReleased
+      ? `<span class="answer-released-badge">💡 解答已開放</span>` : '';
     return `
       <div class="week-card ${modCls[w.mod]} ${done?'completed':''}"
            data-week="${w.id}" onclick="openWeekDetail(${w.id})">
         <div class="check-icon">✓</div>
-        <div class="week-num">第 ${w.week} 週 · <span class="badge-module badge-${w.mod}">${w.modName}</span></div>
+        <div class="week-num">第 ${w.week} 週 · <span class="badge-module badge-${w.mod}">${w.modName}</span>${answerBadge}</div>
         <div class="week-title">${w.title}</div>
         <div class="week-desc">${w.desc}</div>
         <div class="week-meta">
@@ -517,13 +519,17 @@ function renderHome() {
   const upcoming = BSD56Data.weeks.filter(w => !prog[w.id]).slice(0, 3);
 
   el.innerHTML = upcoming.length
-    ? upcoming.map(w => `
+    ? upcoming.map(w => {
+        const answerBadge = w.answersReleased
+          ? `<span class="answer-released-badge">💡 解答已開放</span>` : '';
+        return `
         <div class="week-card ${modCls[w.mod]}" style="cursor:pointer;"
              onclick="showSection('curriculum'); setTimeout(()=>openWeekDetail(${w.id}),80)">
-          <div class="week-num">第 ${w.week} 週 · <span class="badge-module badge-${w.mod}">${w.modName}</span></div>
+          <div class="week-num">第 ${w.week} 週 · <span class="badge-module badge-${w.mod}">${w.modName}</span>${answerBadge}</div>
           <div class="week-title">${w.title}</div>
           <div class="week-desc">${w.desc}</div>
-        </div>`).join('')
+        </div>`;
+      }).join('')
     : '<div class="alert alert-success" style="margin:0;">🎉 恭喜！所有週次已完成，準備好迎接競賽了！</div>';
 }
 
