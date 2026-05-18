@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60">
+  <defs>
+    <style>
+      .logo-icon-bg { fill: #1a3a6c; }
+      .logo-titlebar { fill: #0f2348; }
+      .logo-dot-db  { fill: #8e44ad; }
+      .logo-dot-sw  { fill: #2980b9; }
+      .logo-dot-app { fill: #27ae60; }
+      .logo-code-bg { fill: #0d1b2e; }
+      .logo-prompt  { fill: #27ae60; font-family: 'Courier New', monospace; font-size: 7px; font-weight: bold; }
+      .logo-bsd     { fill: #ffffff; font-family: 'Courier New', monospace; font-size: 7px; }
+      .logo-line    { stroke: #1e4080; stroke-width: 0.8; }
+      .brand-bsd    { fill: #1a3a6c; font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; font-size: 22px; font-weight: 800; }
+      .brand-56     { fill: #e67e22; font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; font-size: 22px; font-weight: 800; }
+      .brand-sub    { fill: #555; font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; font-size: 10px; }
+    </style>
+  </defs>
+
+  <!-- ── Icon: terminal window 48×48 centered in 60-tall space ── -->
+  <!-- Outer rounded rect (window frame) -->
+  <rect x="4" y="6" width="52" height="48" rx="5" ry="5" class="logo-icon-bg"/>
+
+  <!-- Title bar -->
+  <rect x="4" y="6" width="52" height="13" rx="5" ry="5" class="logo-titlebar"/>
+  <rect x="4" y="13" width="52" height="6" class="logo-titlebar"/>
+
+  <!-- Traffic-light dots -->
+  <circle cx="13" cy="12.5" r="3" class="logo-dot-db"/>
+  <circle cx="22" cy="12.5" r="3" class="logo-dot-sw"/>
+  <circle cx="31" cy="12.5" r="3" class="logo-dot-app"/>
+
+  <!-- Code area background -->
+  <rect x="4" y="19" width="52" height="35" rx="0" ry="0" class="logo-code-bg"/>
+  <rect x="4" y="49" width="52" height="5" rx="0" ry="0" class="logo-code-bg"/>
+  <rect x="4" y="49" width="52" height="5" rx="3" ry="3" class="logo-code-bg"/>
+  <!-- bottom round corners -->
+  <path d="M4 49 h52 v5 q0 4 -5 4 h-42 q-5 0 -5 -4 z" class="logo-code-bg"/>
+
+  <!-- Prompt + BSD56 text -->
+  <text x="8" y="30" class="logo-prompt">▶</text>
+  <text x="16" y="30" class="logo-bsd">BSD</text>
+  <text x="34" y="30" style="fill:#e67e22; font-family:'Courier New',monospace; font-size:7px; font-weight:bold;">56</text>
+
+  <!-- Fake code lines -->
+  <line x1="8" y1="37" x2="42" y2="37" class="logo-line"/>
+  <line x1="8" y1="42" x2="35" y2="42" class="logo-line"/>
+  <line x1="8" y1="47" x2="28" y2="47" class="logo-line"/>
+
+  <!-- ── Brand text ── -->
+  <!-- "BSD" -->
+  <text x="64" y="35" class="brand-bsd">BSD</text>
+  <!-- "56" in orange -->
+  <text x="113" y="35" class="brand-56">56</text>
+  <!-- Subtitle -->
+  <text x="64" y="50" class="brand-sub">商務軟體設計培訓平台</text>
+</svg>

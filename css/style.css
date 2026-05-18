@@ -63,6 +63,29 @@ body {
   padding: 2px 8px;
   font-size: 0.85rem;
 }
+.site-navbar .brand .brand-icon {
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+}
+.site-navbar .brand .brand-text {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.site-navbar .brand .brand-bsd {
+  color: #ffffff;
+}
+.site-navbar .brand .brand-56 {
+  color: var(--accent);
+}
+.site-navbar .brand .brand-sub {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.65);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
 .nav-links {
   display: flex;
   gap: 0.25rem;
