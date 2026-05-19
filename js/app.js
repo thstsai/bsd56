@@ -32,24 +32,22 @@ function isAnswerReleased(weekId) {
   return BSD56Data.weeks.find(w => w.id === weekId)?.answersReleased === true;
 }
 
-function getStudentId() {
-  let id = localStorage.getItem('bsd56_student_id');
-  if (!id) {
-    id = 'stu_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-    localStorage.setItem('bsd56_student_id', id);
-  }
-  return id;
-}
-
 function getStudentName() {
   return localStorage.getItem('bsd56_student_name') || '';
+}
+
+// Derive a stable, cross-device Firestore doc ID from the student name.
+// Using the name itself ensures the same student always writes to the same
+// document regardless of device, browser, or cleared localStorage.
+function nameToDocId(name) {
+  return name.trim().replace(/\//g, '_').slice(0, 100) || 'unknown';
 }
 
 function syncToFirebase() {
   if (!_db) return;
   const name = getStudentName();
   if (!name) return;
-  _db.collection('students').doc(getStudentId()).set({
+  _db.collection('students').doc(nameToDocId(name)).set({
     name,
     progress: getProgress(),
     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
@@ -620,9 +618,17 @@ function renderResources() {
   if (!container) return;
 
   container.innerHTML = `
-    <div class="alert alert-warning">
-      ⚠ 資料庫備份檔 (.bak) 因超過 GitHub 100MB 限制未包含在此，請向指導老師索取
-      （55分區：Zyberion_ANM.bak 45MB、56分區：SHLife_ANM.bak 91MB、LinkOne.bak 157MB）
+    <div class="alert alert-info" style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <span style="font-size:1.4rem;">🗄</span>
+      <div>
+        <strong>資料庫備份檔（.bak）</strong>
+        （55分區：Zyberion_ANM.bak 45MB、56分區：SHLife_ANM.bak 91MB、LinkOne.bak 157MB）<br>
+        <a href="https://drive.google.com/drive/folders/1kRhWPrf_GgD2TjbNmoF0vONTTTv9ebE8?usp=sharing"
+           target="_blank" rel="noopener"
+           style="color:var(--primary-light);font-weight:600;text-decoration:underline;">
+          📂 開啟 Google Drive 下載備份檔 →
+        </a>
+      </div>
     </div>
     ${RESOURCES.map(g => `
       <div class="card" style="margin-bottom:1.25rem;">
