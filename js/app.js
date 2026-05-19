@@ -61,6 +61,7 @@ function initStudentName() {
     if (modal) { modal.style.display = 'flex'; document.getElementById('name-input').focus(); }
   } else {
     prefillNameFields();
+    syncToFirebase(); // sync progress on every page load for returning students
   }
 }
 
