@@ -52,6 +52,9 @@
     .btn-refresh { padding: .4rem .85rem; background: #1a3a6c; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: .82rem; transition: background .15s; }
     .btn-refresh:hover { background: #2456a4; }
     .btn-issues { padding: .4rem .85rem; background: #fff; color: #1a3a6c; border: 1px solid #1a3a6c; border-radius: 6px; cursor: pointer; font-size: .82rem; text-decoration: none; }
+    .btn-cleanup { padding: .4rem .85rem; background: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 6px; cursor: pointer; font-size: .82rem; font-weight: 600; transition: background .15s; }
+    .btn-cleanup:hover { background: #ffe083; }
+    .btn-cleanup:disabled { opacity: .5; cursor: not-allowed; }
 
     /* ── Student table ── */
     .table-wrap { overflow-x: auto; }
@@ -191,6 +194,7 @@
         <span class="table-title">📋 選手週次進度一覽</span>
         <span class="updated-at" id="update-time"></span>
         <a href="https://github.com/thstsai/BSD56/issues" target="_blank" class="btn-issues">📋 查看作業繳交</a>
+        <button class="btn-cleanup" id="btn-cleanup" onclick="cleanupDuplicates()">🧹 清理重複紀錄</button>
         <button class="btn-refresh" onclick="loadStudents()">🔄 重新整理</button>
       </div>
       <div class="table-wrap">
@@ -423,7 +427,92 @@ async function setAllAnswers(val) {
     await db.collection('settings').doc('answers').set(updates, { merge: true });
   } catch(e) {
     alert('更新失敗：' + e.message);
-    loadAnswerConfig(); // reload to restore correct state
+    loadAnswerConfig();
+  }
+}
+
+// ── Duplicate Cleanup ─────────────────────────────────────
+// Derives the canonical Firestore doc ID from a student name
+// (must match nameToDocId in app.js)
+function nameToDocId(name) {
+  return name.trim().replace(/\//g, '_').slice(0, 100) || 'unknown';
+}
+
+async function cleanupDuplicates() {
+  if (!db) return;
+  const btn = document.getElementById('btn-cleanup');
+  btn.disabled = true;
+  btn.textContent = '⏳ 分析中...';
+
+  try {
+    // 1. Fetch all student documents
+    const snap = await db.collection('students').get();
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 2. Group by name field
+    const byName = {};
+    docs.forEach(d => {
+      const name = (d.name || '').trim();
+      if (!name) return;
+      if (!byName[name]) byName[name] = [];
+      byName[name].push(d);
+    });
+
+    // 3. Find groups with more than one document
+    const dupes = Object.entries(byName).filter(([, g]) => g.length > 1);
+
+    if (!dupes.length) {
+      alert('目前沒有重複的選手紀錄，資料庫已整潔！');
+      return;
+    }
+
+    // 4. Show summary and ask for confirmation
+    const lines = dupes.map(([name, g]) =>
+      `• ${name}：共 ${g.length} 筆（保留 1 筆、刪除 ${g.length - 1} 筆）`
+    ).join('\n');
+    if (!confirm(`發現以下重複紀錄，將自動合併學習進度後刪除多餘文件：\n\n${lines}\n\n確認執行？`)) return;
+
+    // 5. Merge progress + write canonical doc + delete orphan docs
+    btn.textContent = '⏳ 清理中...';
+    const batch = db.batch();
+    let deleteCount = 0;
+
+    for (const [name, group] of dupes) {
+      const canonicalId = nameToDocId(name);
+
+      // Union of all progress across all duplicates
+      const merged = {};
+      group.forEach(doc => {
+        Object.entries(doc.progress || {}).forEach(([k, v]) => {
+          if (v) merged[k] = true;
+        });
+      });
+
+      // Write merged progress to canonical doc
+      batch.set(
+        db.collection('students').doc(canonicalId),
+        { name, progress: merged, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+
+      // Delete all non-canonical docs
+      group.forEach(doc => {
+        if (doc.id !== canonicalId) {
+          batch.delete(db.collection('students').doc(doc.id));
+          deleteCount++;
+        }
+      });
+    }
+
+    await batch.commit();
+    alert(`✅ 完成！已刪除 ${deleteCount} 筆重複紀錄，學習進度已合併保留。`);
+    loadStudents();
+
+  } catch(e) {
+    alert('清理失敗：' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🧹 清理重複紀錄';
   }
 }
 
