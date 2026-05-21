@@ -7,7 +7,8 @@
       "Bash(node --check \"D:\\\\ClaudeWork\\\\BSD56\\\\js\\\\homework-answers.js\")",
       "PowerShell($helper = git config --get credential.helper; echo \"Credential helper: $helper\"; $token = git credential fill 2>&1; echo $token)",
       "PowerShell(Set-Location \"D:\\\\ClaudeWork\\\\BSD56\"; $input = \"protocol=https`nhost=github.com`n`n\"; $token = $input | git credential fill; $password = \\($token | Select-String \"password=\"\\).ToString\\(\\).Replace\\(\"password=\",\"\"\\); if \\($password\\) { $auth = [System.Convert]::ToBase64String\\([System.Text.Encoding]::ASCII.GetBytes\\(\"x:$password\"\\)\\); $headers = @{ Authorization = \"Basic $auth\"; \"Content-Type\" = \"application/json\"; Accept = \"application/vnd.github.v3+json\" }; $body = @{ title = \"feat: 更新週次3–8訓練內容改採高中生友善技術堆疊\"; head = \"main\"; base = \"main\"; body = \"## Summary`n`nUpdated weeks 3-8 with high-school-friendly tech stack.`n`n🤖 Generated with Claude Code\" } | ConvertTo-Json; Invoke-RestMethod -Uri \"https://api.github.com/repos/thstsai/BSD56/pulls\" -Method Post -Headers $headers -Body $body } else { \"No token found\" })",
-      "PowerShell($items = [System.Security.SecureString]::new\\(\\); $creds = cmdkey /list 2>&1 | Select-String \"github\"; $creds)"
+      "PowerShell($items = [System.Security.SecureString]::new\\(\\); $creds = cmdkey /list 2>&1 | Select-String \"github\"; $creds)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

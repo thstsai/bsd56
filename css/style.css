@@ -637,6 +637,83 @@ body {
 .progress-week-label { flex: 1; font-size: 0.875rem; }
 .progress-week-badge { font-size: 0.75rem; }
 
+/* ---- GitHub Guide ---- */
+.gh-guide {
+  background: var(--card-bg);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+.gh-guide summary {
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  background: #fafbfc;
+  border-bottom: 1px solid transparent;
+  user-select: none;
+  list-style: none;
+}
+.gh-guide summary::-webkit-details-marker { display: none; }
+.gh-guide[open] summary { border-bottom-color: var(--border); }
+.gh-guide summary .gh-arrow {
+  margin-left: auto;
+  font-size: .8rem;
+  color: var(--text-muted);
+  transition: transform .2s;
+}
+.gh-guide[open] summary .gh-arrow { transform: rotate(90deg); }
+.gh-guide-body { padding: 1.25rem 1.5rem; }
+
+.gh-steps { display: flex; flex-direction: column; gap: 1.25rem; }
+.gh-step {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: .75rem 1rem;
+  align-items: start;
+}
+.gh-step-num {
+  width: 36px; height: 36px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .95rem;
+  flex-shrink: 0; margin-top: 2px;
+}
+.gh-step-title { font-weight: 700; font-size: .95rem; margin: 0 0 .3rem; }
+.gh-step-desc  { font-size: .85rem; color: var(--text-muted); margin: 0 0 .6rem; line-height: 1.6; }
+.gh-cmd {
+  background: #0d1117;
+  color: #c9d1d9;
+  border-radius: 8px;
+  padding: .65rem 1rem;
+  font-family: 'Courier New', monospace;
+  font-size: .82rem;
+  line-height: 1.8;
+  margin: .35rem 0;
+  overflow-x: auto;
+  position: relative;
+}
+.gh-cmd .cmt { color: #8b949e; }
+.gh-cmd .kw  { color: #79c0ff; }
+.gh-cmd .str { color: #a5d6ff; }
+.gh-cmd .val { color: #f78166; }
+.gh-tip {
+  background: #fff3cd;
+  border-left: 3px solid #ffc107;
+  border-radius: 0 6px 6px 0;
+  padding: .5rem .85rem;
+  font-size: .82rem;
+  margin-top: .5rem;
+  line-height: 1.5;
+}
+.gh-divider { border: none; border-top: 1px dashed var(--border); margin: .25rem 0; }
+
 /* ---- Upload Section ---- */
 .upload-steps {
   display: grid;

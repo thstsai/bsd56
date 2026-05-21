@@ -200,6 +200,122 @@
   <h1 class="section-title">📤 作業繳交</h1>
   <p class="section-subtitle">每週完成作業後，請上傳至GitHub並在此提交連結，讓老師追蹤你的進度</p>
 
+  <!-- GitHub 使用指南（可折疊） -->
+  <details class="gh-guide">
+    <summary>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="color:#1a3a6c;flex-shrink:0;" aria-hidden="true">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+      GitHub 帳號設定與作業繳交教學
+      <span class="gh-arrow">▶</span>
+    </summary>
+
+    <div class="gh-guide-body">
+      <div class="gh-steps">
+
+        <!-- Step 1 -->
+        <div class="gh-step">
+          <div class="gh-step-num">1</div>
+          <div>
+            <div class="gh-step-title">建立 GitHub 帳號</div>
+            <div class="gh-step-desc">前往 <a href="https://github.com/signup" target="_blank" rel="noopener"><strong>github.com/signup</strong></a>，填入 Username（建議使用真實姓名縮寫，如 <code>thstsai</code>）、Email 和密碼完成註冊。</div>
+            <div class="gh-tip">💡 帳號名稱建議：<strong>學校縮寫 + 姓名縮寫</strong>，例如 <code>ths_mingming</code>，方便老師辨識。</div>
+          </div>
+        </div>
+
+        <hr class="gh-divider">
+
+        <!-- Step 2 -->
+        <div class="gh-step">
+          <div class="gh-step-num">2</div>
+          <div>
+            <div class="gh-step-title">安裝 Git</div>
+            <div class="gh-step-desc">前往 <a href="https://git-scm.com/download/win" target="_blank" rel="noopener"><strong>git-scm.com</strong></a> 下載並安裝 Git for Windows，所有選項保持預設即可。安裝後開啟「Git Bash」或「命令提示字元」確認版本：</div>
+            <div class="gh-cmd">git --version
+<span class="cmt"># 應顯示類似：git version 2.xx.x.windows.x</span></div>
+          </div>
+        </div>
+
+        <hr class="gh-divider">
+
+        <!-- Step 3 -->
+        <div class="gh-step">
+          <div class="gh-step-num">3</div>
+          <div>
+            <div class="gh-step-title">設定 Git 個人資訊（第一次使用時）</div>
+            <div class="gh-step-desc">開啟 Git Bash，輸入以下指令設定你的姓名和 Email（與 GitHub 帳號相同）：</div>
+            <div class="gh-cmd"><span class="kw">git</span> config --global user.name <span class="str">"你的姓名"</span>
+<span class="kw">git</span> config --global user.email <span class="str">"你的GitHub信箱"</span></div>
+          </div>
+        </div>
+
+        <hr class="gh-divider">
+
+        <!-- Step 4 -->
+        <div class="gh-step">
+          <div class="gh-step-num">4</div>
+          <div>
+            <div class="gh-step-title">在 GitHub 建立作業 Repository</div>
+            <div class="gh-step-desc">登入 GitHub 後點選右上角「<strong>+</strong>」→「<strong>New repository</strong>」，依以下設定建立：</div>
+            <div class="gh-cmd"><span class="cmt"># Repository 設定</span>
+Repository name：<span class="val">BSD56_Homework</span>
+Visibility：      <span class="val">Public</span>（公開，老師才看得到）
+☑ Add a README file（勾選）</div>
+            <div class="gh-tip">📌 建立後記下你的 Repo 網址，格式為：<code>https://github.com/你的帳號/BSD56_Homework</code></div>
+          </div>
+        </div>
+
+        <hr class="gh-divider">
+
+        <!-- Step 5 -->
+        <div class="gh-step">
+          <div class="gh-step-num">5</div>
+          <div>
+            <div class="gh-step-title">Clone（複製）Repository 到電腦</div>
+            <div class="gh-step-desc">將遠端 Repository 下載到本機，之後直接在此資料夾放作業：</div>
+            <div class="gh-cmd"><span class="kw">git</span> clone https://github.com/<span class="val">你的帳號</span>/BSD56_Homework.git
+<span class="kw">cd</span> BSD56_Homework</div>
+          </div>
+        </div>
+
+        <hr class="gh-divider">
+
+        <!-- Step 6 -->
+        <div class="gh-step">
+          <div class="gh-step-num">6</div>
+          <div>
+            <div class="gh-step-title">每週繳交作業流程</div>
+            <div class="gh-step-desc">完成作業後，在 <code>BSD56_Homework</code> 資料夾內建立 <code>Week01/</code>、<code>Week02/</code>… 子資料夾，依序執行：</div>
+            <div class="gh-cmd"><span class="cmt"># 1. 將作業檔案複製到對應資料夾，例如 Week03/</span>
+
+<span class="cmt"># 2. 加入所有新增/修改的檔案</span>
+<span class="kw">git</span> add .
+
+<span class="cmt"># 3. 建立 commit（記錄說明）</span>
+<span class="kw">git</span> commit -m <span class="str">"Week03: T-SQL stored procedure 作業"</span>
+
+<span class="cmt"># 4. 推送到 GitHub</span>
+<span class="kw">git</span> push</div>
+            <div class="gh-tip">🔑 第一次 <code>push</code> 時 Git 會要求登入，選擇「在瀏覽器中登入」即可完成 GitHub 授權。</div>
+          </div>
+        </div>
+
+        <hr class="gh-divider">
+
+        <!-- Step 7 -->
+        <div class="gh-step">
+          <div class="gh-step-num">7</div>
+          <div>
+            <div class="gh-step-title">送出作業表單</div>
+            <div class="gh-step-desc">Push 成功後，回到本頁下方的「<strong>繳交作業表單</strong>」，填入姓名、週次與你的 GitHub Repository 網址，系統會在老師的 GitHub Issues 建立一筆繳交紀錄。</div>
+            <div class="gh-tip">✅ 成功送出後，進度追蹤頁面的週次圖示會更新為「已完成」。</div>
+          </div>
+        </div>
+
+      </div><!-- /gh-steps -->
+    </div><!-- /gh-guide-body -->
+  </details>
+
   <div class="upload-steps">
     <div class="upload-step">
       <div class="step-num">1</div>
