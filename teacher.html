@@ -55,6 +55,8 @@
     .btn-cleanup { padding: .4rem .85rem; background: #fff3cd; color: #856404; border: 1px solid #ffc107; border-radius: 6px; cursor: pointer; font-size: .82rem; font-weight: 600; transition: background .15s; }
     .btn-cleanup:hover { background: #ffe083; }
     .btn-cleanup:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-del { padding: .25rem .55rem; background: #fff; color: #e74c3c; border: 1px solid #e74c3c; border-radius: 5px; cursor: pointer; font-size: .76rem; white-space: nowrap; transition: all .15s; }
+    .btn-del:hover { background: #e74c3c; color: #fff; }
 
     /* ── Student table ── */
     .table-wrap { overflow-x: auto; }
@@ -208,6 +210,7 @@
               <th colspan="4" class="th-all">整合 / 全國賽</th>
               <th rowspan="2" style="vertical-align:middle;">完成率</th>
               <th rowspan="2" style="vertical-align:middle;">最近更新</th>
+              <th rowspan="2" style="vertical-align:middle;">操作</th>
             </tr>
             <tr>
               <th class="th-db">W1</th><th class="th-db">W2</th><th class="th-db">W3</th>
@@ -217,7 +220,7 @@
             </tr>
           </thead>
           <tbody id="student-tbody">
-            <tr><td colspan="15" class="no-data">載入中...</td></tr>
+            <tr><td colspan="16" class="no-data">載入中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -273,7 +276,7 @@ function initDashboard() {
   if (unconfigured) {
     document.getElementById('firebase-error-box').style.display = '';
     document.getElementById('student-tbody').innerHTML =
-      '<tr><td colspan="15" class="no-data">Firebase 未設定，無法讀取選手資料</td></tr>';
+      '<tr><td colspan="16" class="no-data">Firebase 未設定，無法讀取選手資料</td></tr>';
     updateStats([]);
     return;
   }
@@ -290,7 +293,7 @@ function initDashboard() {
 async function loadStudents() {
   if (!db) return;
   document.getElementById('student-tbody').innerHTML =
-    '<tr><td colspan="15" class="no-data">載入中...</td></tr>';
+    '<tr><td colspan="16" class="no-data">載入中...</td></tr>';
   try {
     const snap = await db.collection('students').orderBy('lastUpdated', 'desc').get();
     const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -299,7 +302,7 @@ async function loadStudents() {
       '更新：' + new Date().toLocaleTimeString('zh-TW');
   } catch(e) {
     document.getElementById('student-tbody').innerHTML =
-      `<tr><td colspan="15" class="no-data">讀取失敗：${escHtml(e.message)}</td></tr>`;
+      `<tr><td colspan="16" class="no-data">讀取失敗：${escHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -307,7 +310,7 @@ function renderTable(students) {
   updateStats(students);
   if (!students.length) {
     document.getElementById('student-tbody').innerHTML =
-      '<tr><td colspan="15" class="no-data">目前沒有選手資料。選手在學生網站標記週次完成後，資料將自動出現。</td></tr>';
+      '<tr><td colspan="16" class="no-data">目前沒有選手資料。選手在學生網站標記週次完成後，資料將自動出現。</td></tr>';
     return;
   }
 
@@ -331,6 +334,7 @@ function renderTable(students) {
       ${cells}
       <td><span class="pct-pill ${pctCls}">${pct}%</span></td>
       <td style="font-size:.75rem;color:#adb5bd;white-space:nowrap;">${updAt}</td>
+      <td><button class="btn-del" onclick="deleteStudent('${escHtml(s.id)}','${escHtml(s.name || s.id)}')">🗑 刪除</button></td>
     </tr>`;
   }).join('');
 
@@ -428,6 +432,19 @@ async function setAllAnswers(val) {
   } catch(e) {
     alert('更新失敗：' + e.message);
     loadAnswerConfig();
+  }
+}
+
+// ── Delete Student ────────────────────────────────────────
+async function deleteStudent(docId, name) {
+  if (!db) return;
+  if (!confirm(`確定要刪除選手「${name}」的所有紀錄嗎？\n\n此操作無法復原。`)) return;
+  try {
+    await db.collection('students').doc(docId).delete();
+    // Optimistic: remove row immediately
+    loadStudents();
+  } catch(e) {
+    alert('刪除失敗：' + e.message);
   }
 }
 
