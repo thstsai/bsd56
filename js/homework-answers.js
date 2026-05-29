@@ -10,44 +10,109 @@ const BSD56HomeworkAnswers = {
       {
         type: 'text',
         title: '解題思路',
-        content: '先從試題找出所有角色（Actor）：Employee（員工）、Admin（管理員）；再列出每個角色能執行的功能（Use Case）；最後用 include / extend 關係連接共用功能。'
+        content: `依評分表，Use Case 圖須達到以下標準：
+• Actor（4個）：Employee（一般員工）、Admin（管理員）、Auditor（內容審核員）、System（自動系統）
+• Use Case（≥18個）：依功能分群：身份驗證 / 動態牆 / 留言 / 貼圖商城 / 管理 / 審核 / 系統自動化
+• include：「發佈貼文」、「購買貼圖」都 include「登入」；「審核待審貼文」include「查看動態牆」
+• extend：「回覆留言」extend「新增留言」；「使用貼圖」extend「發佈貼文」`
       },
       {
         type: 'mermaid',
-        title: 'LinkOne Use Case 圖',
+        title: 'LinkOne Use Case 圖（4 Actor、20 Use Case、5 include/extend）',
         content: `flowchart LR
-  empActor([👤 Employee])
-  adminActor([👤 Admin])
+  empActor(["👤 Employee\\n一般員工"])
+  adminActor(["👤 Admin\\n管理員"])
+  audActor(["👤 Auditor\\n內容審核員"])
+  sysActor(["⚙ System\\n自動系統"])
 
   subgraph sys["LinkOne System"]
-    uc1("登入 / 註冊")
-    uc2("查看動態牆")
-    uc3("發佈貼文")
-    uc4("回覆留言")
-    uc5("購買貼圖")
-    uc6("查看貼圖商城")
-    uc7("管理使用者")
-    uc8("內容審核")
-    uc9("查看舉報")
+    subgraph auth["身份驗證"]
+      uc1("登入")
+      uc2("登出")
+      uc3("修改密碼")
+    end
+    subgraph feed["動態牆"]
+      uc4("查看動態牆")
+      uc5("發佈貼文")
+      uc6("編輯貼文")
+      uc7("刪除貼文")
+      uc8("喜歡貼文")
+      uc9("舉報不當內容")
+    end
+    subgraph cmt["留言系統"]
+      uc10("新增留言")
+      uc11("回覆留言")
+      uc12("刪除留言")
+    end
+    subgraph stk["貼圖商城"]
+      uc13("查看貼圖商城")
+      uc14("購買貼圖")
+      uc15("使用貼圖")
+    end
+    subgraph adm["管理功能"]
+      uc16("管理使用者帳號")
+      uc17("設定角色與權限")
+      uc18("查看統計報表")
+    end
+    subgraph aud["審核功能"]
+      uc19("審核待審貼文")
+      uc20("處理舉報案件")
+      uc21("設定敏感詞庫")
+    end
+    subgraph auto["自動化"]
+      uc22("自動過濾敏感詞")
+    end
   end
 
-  empActor --> uc1
-  empActor --> uc2
-  empActor --> uc3
-  empActor --> uc4
-  empActor --> uc6
-  empActor --> uc5
-  adminActor --> uc1
-  adminActor --> uc7
-  adminActor --> uc8
-  adminActor --> uc9
+  empActor --> uc1 & uc2 & uc3
+  empActor --> uc4 & uc5 & uc6 & uc7 & uc8 & uc9
+  empActor --> uc10 & uc11 & uc12
+  empActor --> uc13 & uc14 & uc15
+  adminActor --> uc1 & uc16 & uc17 & uc18
+  audActor --> uc1 & uc19 & uc20 & uc21
+  sysActor --> uc22
 
-  style sys fill:#f0f4ff,stroke:#1a3a6c`
+  %% include：基本動作必須先完成
+  uc5  -.->|"«include»"| uc1
+  uc14 -.->|"«include»"| uc1
+  uc19 -.->|"«include»"| uc4
+
+  %% extend：選擇性附加行為
+  uc11 -.->|"«extend»"| uc10
+  uc15 -.->|"«extend»"| uc5
+
+  style sys fill:#f0f4ff,stroke:#1a3a6c
+  style auth fill:#e8f5e9,stroke:#27ae60
+  style feed fill:#e3f2fd,stroke:#2980b9
+  style cmt fill:#fce4ec,stroke:#e74c3c
+  style stk fill:#fff8e1,stroke:#f39c12
+  style adm fill:#f3e5f5,stroke:#8e44ad
+  style aud fill:#ffebee,stroke:#c0392b
+  style auto fill:#e0f2f1,stroke:#27ae60`
+      },
+      {
+        type: 'text',
+        title: 'include vs extend 判斷原則',
+        content: `《include》— 必定執行，缺少則流程不完整：
+  ✅ 發佈貼文 《include》 登入   → 未登入無法發文
+  ✅ 購買貼圖 《include》 登入   → 未登入無法購買
+  ✅ 審核貼文 《include》 查看動態牆 → 審核前須先看到貼文
+
+《extend》— 選擇性、條件性才發生：
+  ✅ 回覆留言 《extend》 新增留言 → 留言可以只有一層，回覆是附加功能
+  ✅ 使用貼圖 《extend》 發佈貼文 → 發文不一定要用貼圖`
       },
       {
         type: 'text',
         title: '資料字典重點',
-        content: '依試題評分表，資料字典需包含：欄位名稱、資料型別、長度、說明、PK/FK/NN/Default 等屬性。每個主要實體（Employee、Post、Comment、Sticker、Purchase）至少列出5個欄位。'
+        content: `依試題評分表，資料字典需包含每個欄位的：欄位名稱、資料型別、長度/精度、說明、PK / FK / NN / Default 等限制。
+
+主要實體與最少欄位數（評分基準）：
+• Employee：EmployeeID(PK)、Name、Email、PasswordHash、RoleID(FK)、IsActive、CreatedAt
+• Post：PostID(PK)、EmployeeID(FK)、Content、CreatedAt、IsApproved、ApprovedByID(FK)
+• Comment：CommentID(PK)、PostID(FK)、ParentID(FK自參照)、AuthorID(FK)、Content、IsDeleted
+• Sticker：StickerID(PK)、Name、ImageURL、Price、CategoryID(FK)、IsActive
+• Purchase：PurchaseID(PK)、EmployeeID(FK)、StickerID(FK)、PurchasedAt、Amount`
       }
     ]
   },
