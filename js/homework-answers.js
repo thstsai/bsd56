@@ -1218,7 +1218,7 @@ fun CommentItem(comment: Comment, level: Int = 0) {
 @Composable
 fun CommentSection(comments: List<Comment>) {
     Column {
-        Text("留言 (${comments.size})",
+        Text("留言 (\${comments.size})",
              style    = MaterialTheme.typography.titleSmall,
              modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         LazyColumn(modifier = Modifier.fillMaxWidth()) {
