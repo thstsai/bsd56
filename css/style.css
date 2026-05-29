@@ -1062,3 +1062,14 @@ body {
   .section { padding: 1.25rem 1rem; }
   .week-detail-inner { border-radius: 12px; }
 }
+
+/* ---- Very narrow viewports (Preview pane / small phones) ---- */
+@media (max-width: 400px) {
+  /* Hide legend so week cards appear above the fold */
+  .curriculum-legend { display: none !important; }
+  /* Tighten section header to reclaim vertical space */
+  .section-title { font-size: 1.2rem; margin-bottom: 0.25rem; }
+  .section-subtitle { font-size: 0.8rem; margin-bottom: 0.75rem; }
+  /* Allow week cards to fill single column without overflowing */
+  .week-grid { grid-template-columns: 1fr !important; }
+}
