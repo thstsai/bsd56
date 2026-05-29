@@ -309,6 +309,7 @@ WHERE e.IsActive = 1
 GROUP BY e.EmployeeID, e.Name, e.Email, e.Role;
 
 -- View 2：待審核貼文清單（管理員審核頁使用）
+-- ⚠ SQL Server 的 View 不允許直接寫 ORDER BY（無 TOP/OFFSET），排序應在查詢時指定
 CREATE VIEW vw_PendingPosts AS
 SELECT
     p.PostID,
@@ -318,8 +319,8 @@ SELECT
     e.Email   AS AuthorEmail
 FROM Post p
 INNER JOIN Employee e ON e.EmployeeID = p.EmployeeID
-WHERE p.IsApproved = 0
-ORDER BY p.CreatedAt DESC;  -- (加 WITH SCHEMABINDING 可建 Index)
+WHERE p.IsApproved = 0;
+-- 使用時加排序：SELECT * FROM vw_PendingPosts ORDER BY CreatedAt DESC
 
 -- === 使用方式 ===
 -- C# EF：在 ZChargeContext 加入 Keyless Entity 後直接 LINQ 查詢
@@ -771,10 +772,13 @@ fun LinkOneApp() {
     val backStack by navController.currentBackStackEntryAsState()
     val current   = backStack?.destination?.route
 
+    // ⚠ DynamicFeed / Store 屬於 material-icons-extended，需加依賴：
+    // implementation("androidx.compose.material:material-icons-extended")
+    // 或改用 Default 內建圖示（不需額外套件）：
     val tabs = listOf(
         Triple("home",  Icons.Default.Home,        "首頁"),
-        Triple("feed",  Icons.Default.DynamicFeed, "動態牆"),
-        Triple("store", Icons.Default.Store,       "商城")
+        Triple("feed",  Icons.Default.List,        "動態牆"),
+        Triple("store", Icons.Default.Favorite,    "商城")
     )
 
     Scaffold(
@@ -1044,26 +1048,48 @@ fun FeedScreen(navController: NavController) {
       {
         type: 'code',
         lang: 'SQL',
-        title: '資料遷移 — 從 SHLife 匯入至 New_ 資料表',
-        content: `-- 步驟1：建立 New_Post 資料表
+        title: '資料遷移 — 從 SHLife 現有資料表轉移至 New_ 資料表',
+        content: `-- 56分區情境：SHLife 已有 Employee、SHPost、SHComment、SHSticker 等資料表
+-- 目標：在同一資料庫內建立 New_ 前綴資料表並遷移資料
+
+-- ① 建立 New_Post（含完整約束）
 CREATE TABLE New_Post (
     PostID       INT           IDENTITY(1,1) PRIMARY KEY,
     EmployeeID   INT           NOT NULL REFERENCES Employee(EmployeeID),
     Content      NVARCHAR(500) NOT NULL,
     CreatedAt    DATETIME2     NOT NULL DEFAULT GETDATE(),
-    IsApproved   BIT           NOT NULL DEFAULT 0
+    IsApproved   BIT           NOT NULL DEFAULT 0,
+    SafetyStatus TINYINT       NOT NULL DEFAULT 0  -- 0=待審 1=通過 2=拒絕
 );
 
--- 步驟2：從聊天紀錄 CSV 匯入（BULK INSERT）
-BULK INSERT ChatStaging
-FROM 'C:\\Data\\chat_0001.csv'
-WITH (FIELDTERMINATOR=',', ROWTERMINATOR='\\n', FIRSTROW=2, CODEPAGE='65001');
+-- ② INSERT INTO...SELECT：從 SHPost 遷移舊資料
+--    SHPost 欄位假設：PostID, UserID(=EmployeeID), Body, PostedAt, IsVisible
+INSERT INTO New_Post (EmployeeID, Content, CreatedAt, IsApproved)
+SELECT
+    sp.UserID,
+    sp.Body,
+    sp.PostedAt,
+    CASE WHEN sp.IsVisible = 1 THEN 1 ELSE 0 END
+FROM SHPost sp
+WHERE sp.UserID IN (SELECT EmployeeID FROM Employee)  -- 只匯入有對應員工的貼文
+  AND sp.IsDeleted = 0;
 
--- 步驟3：轉移至 New_Post
-INSERT INTO New_Post (EmployeeID, Content, CreatedAt)
-SELECT s.EmployeeID, s.Message, s.SentAt
-FROM ChatStaging s
-WHERE s.EmployeeID IN (SELECT EmployeeID FROM Employee);`
+-- ③ 驗證筆數
+SELECT
+    (SELECT COUNT(*) FROM SHPost WHERE IsDeleted=0)  AS 原始筆數,
+    (SELECT COUNT(*) FROM New_Post)                  AS 遷移後筆數;
+
+-- ④ 遷移 SHComment → New_Comment（含二層結構）
+INSERT INTO New_Comment (PostID, EmployeeID, ParentCommentID, Content, CreatedAt)
+SELECT
+    sc.PostID,
+    sc.UserID,
+    sc.ParentID,   -- NULL=一層留言、有值=回覆
+    sc.Body,
+    sc.CommentedAt
+FROM SHComment sc
+WHERE sc.UserID IN (SELECT EmployeeID FROM Employee)
+  AND sc.IsDeleted = 0;`
       }
     ]
   },
@@ -1132,43 +1158,75 @@ WHERE s.EmployeeID IN (SELECT EmployeeID FROM Employee);`
       {
         type: 'code',
         lang: 'Kotlin',
-        title: 'Android 二層留言 RecyclerView',
-        content: `// 資料結構：Comment 含子留言清單
+        title: 'Compose 二層留言 — 遞迴 CommentItem（取代 RecyclerView）',
+        content: `// 資料結構：Comment 含子留言清單（與 W7/W8 架構一致）
 data class Comment(
     val id: Int,
     val content: String,
     val author: String,
+    val createdAt: String,
     val replies: List<Comment> = emptyList()
 )
 
-class CommentAdapter(private val comments: List<Comment>)
-    : RecyclerView.Adapter<CommentAdapter.ViewHolder>() {
+// 單一留言（遞迴渲染子留言，最多二層）
+@Composable
+fun CommentItem(comment: Comment, level: Int = 0) {
+    val startPad = (level * 20).dp
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(start = startPad, top = 4.dp, bottom = 2.dp)) {
 
-    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvContent: TextView = view.findViewById(R.id.tvContent)
-        val tvAuthor: TextView  = view.findViewById(R.id.tvAuthor)
-        val rvReplies: RecyclerView = view.findViewById(R.id.rvReplies)
-    }
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (level == 0)
+                    MaterialTheme.colorScheme.surfaceVariant
+                else
+                    MaterialTheme.colorScheme.surface
+            ),
+            border = if (level == 1)
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            else null
+        ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (level == 1) Text("↳ ", color = MaterialTheme.colorScheme.primary)
+                    Text(comment.author,
+                         style = MaterialTheme.typography.labelMedium,
+                         color = MaterialTheme.colorScheme.primary,
+                         fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    Text(comment.createdAt,
+                         style = MaterialTheme.typography.labelSmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(comment.content, style = MaterialTheme.typography.bodySmall)
+            }
+        }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-        ViewHolder(LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_comment, parent, false))
-
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val comment = comments[position]
-        holder.tvContent.text = comment.content
-        holder.tvAuthor.text  = comment.author
-        // 嵌套 RecyclerView 顯示子留言
-        if (comment.replies.isNotEmpty()) {
-            holder.rvReplies.visibility = View.VISIBLE
-            holder.rvReplies.layoutManager = LinearLayoutManager(holder.itemView.context)
-            holder.rvReplies.adapter = CommentAdapter(comment.replies)
-        } else {
-            holder.rvReplies.visibility = View.GONE
+        // 遞迴渲染子留言（二層結構：level=1 不再往下）
+        if (level == 0) {
+            comment.replies.forEach { reply ->
+                CommentItem(reply, level = 1)
+            }
         }
     }
+}
 
-    override fun getItemCount() = comments.size
+// 留言區塊（放在 PostDetailScreen 內）
+@Composable
+fun CommentSection(comments: List<Comment>) {
+    Column {
+        Text("留言 (${comments.size})",
+             style    = MaterialTheme.typography.titleSmall,
+             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            items(comments, key = { it.id }) { comment ->
+                CommentItem(comment)
+            }
+        }
+    }
 }`
       }
     ]
@@ -1198,7 +1256,7 @@ class CommentAdapter(private val comments: List<Comment>)
 
   section App（60min）
   專案建置 + 登入        :app1, 11:50, 15m
-  清單頁 + RecyclerView  :app2, after app1, 25m
+  清單頁 + LazyColumn    :app2, after app1, 25m
   REST API 整合          :app3, after app2, 20m
 
   section 緩衝 + 收尾（10min）
@@ -1207,12 +1265,44 @@ class CommentAdapter(private val comments: List<Comment>)
       {
         type: 'text',
         title: '最常見失分點',
-        content: '(1) SA&DB：ER 圖關聯方向錯誤、漏掉複合主鍵、正規化未到 3NF。(2) Software：DataGridView 未綁定正確欄位、刪除前未做關聯檢查、密碼未雜湊。(3) App：Retrofit Base URL 忘記用 10.0.2.2（模擬器）、LiveData 未在主執行緒更新 UI、RecyclerView notifyDataSetChanged 漏呼叫。'
+        content: `(1) SA&DB：
+• ER 圖關聯方向錯誤（箭頭方向代表 FK 指向 PK）
+• 漏掉複合主鍵（如 EmployeeSticker 應是 EmployeeID+StickerID 複合 PK）
+• 正規化未到 3NF（Category 應獨立成表，不存在 Sticker 表內）
+• View 定義內直接寫 ORDER BY（SQL Server 不允許，應在查詢時排序）
+
+(2) Software（C# WinForms）：
+• DataGridView 未綁定正確欄位（AutoGenerateColumns 忘記關閉）
+• 刪除前未做 .Any() 關聯檢查，導致 FK 違反錯誤
+• 密碼未雜湊（SHA256）直接明文比對
+
+(3) App（Jetpack Compose）：
+• HttpURLConnection 忘記在 withContext(Dispatchers.IO) 內執行
+• BASE_URL 用 localhost 而非 10.0.2.2（模擬器無法連到 Host）
+• produceState / StateFlow 未正確收集，UI 不更新
+• Compose recomposition 問題：key 未設定導致清單項目錯位`
       },
       {
         type: 'text',
         title: '競賽加分策略',
-        content: '(1) Use Case 圖：標注 include/extend 關係，加分。(2) ER 圖：加上資料型別與長度，評審易給分。(3) Software：加上狀態列顯示登入者名稱。(4) App：實作 Pull-to-Refresh（SwipeRefreshLayout）可額外加分。(5) 所有模組：確保能執行不 crash，不完整功能比 crash 的功能分數高。'
+        content: `(1) SA&DB：
+• Use Case 圖標注 «include»/«extend» 關係 → 加分
+• ER 圖加上資料型別與長度（評審易給分）
+• 為 View 加說明註解（用途、對應 C# 呼叫方式）
+
+(2) Software（C# WinForms）：
+• 狀態列顯示登入者名稱與角色
+• 閒置倒數計時顯示（倒數30秒變紅警告）
+• 搜尋欄支援多關鍵字（Name + Email 同時比對）
+
+(3) App（Jetpack Compose）：
+• 實作 Pull-to-Refresh（Compose 用 pullRefreshState）：
+  val refreshState = rememberPullRefreshState(isRefreshing, ::reload)
+  Box(Modifier.pullRefresh(refreshState)) { ... PullRefreshIndicator(...) }
+• LazyColumn 加 key = { item.id } 避免動畫跳動
+• 網路錯誤時顯示「重試」按鈕（UiState.Error 分支）
+
+(4) 通用原則：確保能執行不 crash — 不完整功能比 crash 的功能分數高`
       }
     ]
   }
