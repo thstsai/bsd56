@@ -119,69 +119,117 @@ const BSD56HomeworkAnswers = {
 
   // ── Week 2：ER 圖設計與資料庫正規化 ──────────────────────
   2: {
-    summary: '設計 LinkOne 系統的 ER 圖，達到 3NF 正規化，並確認關聯完整性。',
+    summary: '設計 LinkOne 系統的 ER 圖，達到 3NF 正規化，共 8 張資料表：1 張既有表（Employee）+ 7 張新增表（New_ 前綴）。新增表涵蓋角色、貼文、留言、貼圖、購買、擁有貼圖及舉報記錄。',
     sections: [
       {
+        type: 'text',
+        title: '8 張資料表清單（含 New_ 前綴說明）',
+        content: `56分區 LinkOne 以 SHLife 既有資料庫為基礎遷移，新增資料表一律加 New_ 前綴：
+
+① Employee          — 既有員工帳號表（沿用 SHLife，無 New_）
+② New_Role          — 【新】角色定義（Admin/Auditor/Employee），3NF 正規化角色資料
+③ New_Post          — 【新】動態牆貼文（含審核狀態）
+④ New_Comment       — 【新】留言（ParentID 自參照，支援二層回覆）
+⑤ New_Sticker       — 【新】貼圖商品
+⑥ New_Purchase      — 【新】購買紀錄（橋接 Employee ↔ New_Sticker）
+⑦ New_EmployeeSticker — 【新】擁有貼圖（橋接表，避免重複購買問題）
+⑧ New_Report        — 【新】舉報記錄（對應 Use Case：舉報不當內容）`
+      },
+      {
         type: 'mermaid',
-        title: 'LinkOne ER 圖（3NF）',
+        title: 'LinkOne ER 圖（8 張資料表，3NF，含 New_ 前綴）',
         content: `erDiagram
   EMPLOYEE {
     int EmployeeID PK
-    nvarchar(50) Name
-    nvarchar(100) Email
-    nvarchar(256) PasswordHash
-    datetime2 CreatedAt
+    int RoleID FK
+    nvarchar50 Name
+    nvarchar100 Email
+    nvarchar256 PasswordHash
     bit IsActive
+    datetime2 CreatedAt
   }
-  POST {
+  NEW_ROLE {
+    int RoleID PK
+    nvarchar20 RoleName
+    nvarchar100 Description
+  }
+  NEW_POST {
     int PostID PK
     int EmployeeID FK
-    nvarchar(500) Content
+    nvarchar500 Content
     datetime2 CreatedAt
     bit IsApproved
     int ApprovedByID FK
+    bit IsDeleted
   }
-  COMMENT {
+  NEW_COMMENT {
     int CommentID PK
     int PostID FK
     int EmployeeID FK
-    int ParentCommentID FK
-    nvarchar(300) Content
+    int ParentID FK
+    nvarchar300 Content
     datetime2 CreatedAt
+    bit IsDeleted
   }
-  STICKER {
+  NEW_STICKER {
     int StickerID PK
-    nvarchar(50) Name
-    nvarchar(200) ImagePath
+    nvarchar50 Name
+    nvarchar200 ImagePath
     decimal Price
-    nvarchar(30) Category
+    nvarchar30 Category
     bit IsActive
   }
-  PURCHASE {
+  NEW_PURCHASE {
     int PurchaseID PK
     int EmployeeID FK
     int StickerID FK
     datetime2 PurchasedAt
     decimal PaidAmount
   }
-  EMPLOYEE_STICKER {
+  NEW_EMPLOYEE_STICKER {
     int EmployeeID FK
     int StickerID FK
   }
+  NEW_REPORT {
+    int ReportID PK
+    int ReporterID FK
+    int PostID FK
+    nvarchar100 Reason
+    nvarchar10 Status
+    datetime2 CreatedAt
+  }
 
-  EMPLOYEE ||--o{ POST : "writes"
-  EMPLOYEE ||--o{ COMMENT : "comments"
-  EMPLOYEE ||--o{ PURCHASE : "buys"
-  EMPLOYEE ||--o{ EMPLOYEE_STICKER : "owns"
-  POST ||--o{ COMMENT : "has"
-  COMMENT o|--o{ COMMENT : "replies to"
-  STICKER ||--o{ PURCHASE : "sold in"
-  STICKER ||--o{ EMPLOYEE_STICKER : "owned via"`
+  NEW_ROLE ||--o{ EMPLOYEE : "assigned to"
+  EMPLOYEE ||--o{ NEW_POST : "writes"
+  EMPLOYEE ||--o{ NEW_COMMENT : "comments"
+  EMPLOYEE ||--o{ NEW_PURCHASE : "buys"
+  EMPLOYEE ||--o{ NEW_EMPLOYEE_STICKER : "owns"
+  EMPLOYEE ||--o{ NEW_REPORT : "files"
+  NEW_POST ||--o{ NEW_COMMENT : "has"
+  NEW_POST ||--o{ NEW_REPORT : "reported via"
+  NEW_COMMENT ||--o{ NEW_COMMENT : "replies to"
+  NEW_STICKER ||--o{ NEW_PURCHASE : "sold in"
+  NEW_STICKER ||--o{ NEW_EMPLOYEE_STICKER : "owned via"`
       },
       {
         type: 'text',
-        title: '正規化說明',
-        content: '1NF：每欄只存單一值，貼圖擁有記錄獨立為 EMPLOYEE_STICKER 表。2NF：PURCHASE 的 PaidAmount 只依賴 PurchaseID。3NF：移除傳遞相依，如 Category 描述不存在 STICKER 外，獨立查表若有需要。Comment 的 ParentCommentID 實現二層留言結構（自我參照）。'
+        title: '3NF 正規化說明',
+        content: `【1NF】每欄只存單一值：
+• 貼圖擁有記錄獨立為 New_EmployeeSticker（避免 Employee 欄位存陣列）
+• 舉報記錄獨立為 New_Report（避免 Post 欄位存多筆舉報）
+
+【2NF】所有非鍵欄位完全依賴主鍵：
+• New_Purchase.PaidAmount 只依賴 PurchaseID（非 EmployeeID 或 StickerID）
+• New_EmployeeSticker 複合 PK (EmployeeID, StickerID)，無其他欄位，天生符合 2NF
+
+【3NF】消除傳遞相依：
+• Employee 的角色名稱改存 RoleID FK → New_Role（避免 RoleName 傳遞依賴 EmployeeID）
+• New_Sticker.Category 若未來需要詳細說明，可再拆出 Category 表；現階段直接存字串符合 3NF
+• New_Comment.ParentID 自我參照實現二層留言（ParentID=NULL 為一層，有值為回覆）
+
+【New_ 前綴規則】
+• Employee 沿用 SHLife 既有表，無前綴
+• 其餘 7 張均為 LinkOne 新設計，須加 New_ 前綴（評分關鍵）`
       }
     ]
   },
